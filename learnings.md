@@ -54,3 +54,68 @@ on a separate thread pool — meaning HTTP redirects complete without waiting fo
 writes. The actual thread pool tuning (`ThreadPoolTaskExecutor`) lives in config/.
 
 ---
+
+## Prompt 2 — Database Layer (Flyway + JPA Entities + Repositories)
+
+### Why Flyway over Liquibase?
+Flyway uses plain SQL — what you write is exactly what runs against the DB. No XML/YAML
+abstraction to learn, no surprises from DSL translation. Versioned filenames (V1__, V2__...)
+make ordering unambiguous and diffs readable in PRs. Flyway fails fast at startup if
+a previously-applied migration file has been modified (checksum mismatch), preventing
+silent schema drift between environments. Most backend interviewers and DBAs recognize it.
+
+### TIMESTAMPTZ vs TIMESTAMP
+TIMESTAMP stores a "wall clock" time with no timezone info. If the DB server's timezone
+changes, every stored timestamp is misinterpreted — a subtle, catastrophic bug.
+TIMESTAMPTZ stores a UTC epoch and converts to/from the session timezone on read/write.
+In Java: `OffsetDateTime` maps to TIMESTAMPTZ.  `LocalDateTime` maps to TIMESTAMP — never
+use it for audit columns.
+
+### Composite index (url_id, clicked_at DESC) — why it eliminates the sort step
+The dashboard query is: `SELECT * FROM clicks WHERE url_id = ? ORDER BY clicked_at DESC LIMIT 100`
+Without the index: seq scan all rows, filter ~0.01%, sort survivors.
+With the composite index:
+- B-tree leaf pages are laid out as (url_id, clicked_at DESC).
+- PostgreSQL jumps directly to url_id = X, then reads exactly 100 rows in order.
+- No "Sort" node in EXPLAIN ANALYZE — the index IS the sort.
+The DESC direction matters: for multi-column indexes it is baked in; the planner must
+match it to avoid a sort. Single-column indexes are bidirectional so DESC is optional there.
+
+### Partial index (expires_at WHERE expires_at IS NOT NULL)
+~80% of URLs never expire (expires_at IS NULL). A full index includes all those NULL rows
+wasting pages and slowing scans. A partial index only covers rows the cleanup job cares
+about: `WHERE expires_at < NOW()`. PostgreSQL can use the partial index because it infers
+the predicate is satisfied by any row in the result set.
+
+### ON DELETE SET NULL vs CASCADE — intentional per relationship
+- `urls.user_id` SET NULL: account deletion makes links anonymous, not dead.
+  CASCADE would silently break embedded links across the internet.
+- `clicks.url_id` CASCADE: click rows without a parent URL are meaningless orphans.
+Cascade behavior is a product/UX decision, not just a JPA detail.
+
+### ip_address TEXT vs PostgreSQL INET
+INET is the correct PostgreSQL type (enables subnet operators). The problem: Hibernate
+maps `String` to VARCHAR; PostgreSQL rejects VARCHAR for an INET column with PSQLException.
+The bridge is a custom `AttributeConverter<String, PGobject>` — added complexity for a
+field that's only ever stored and retrieved. TEXT is the pragmatic choice here.
+Migration to INET later: `ALTER TABLE clicks ALTER COLUMN ip_address TYPE INET USING ip_address::INET`
+
+### @Builder.Default on Lombok fields with initializers
+Without `@Builder.Default`, Lombok's @Builder ignores field initializers. `boolean
+customAlias = false` works by accident (primitive default is false), but `List<T> urls =
+new ArrayList<>()` becomes `null` — a silent NPE waiting to happen. Always annotate fields
+with non-trivial initializers with `@Builder.Default`.
+
+### Spring Data path traversal: findByUserId on a ManyToOne
+`Url.user` is `private User user` (not `long userId`). Spring Data resolves `findByUserId`
+by splitting: `user` field + `Id` property → JPQL `WHERE u.user.id = ?`. Hibernate
+compiles this to `WHERE user_id = ?` (no JOIN) because the FK is stored directly in `urls`.
+Use `findByUser_Id` (underscore) to be explicit when field name ambiguity is possible.
+
+### YAML dotted keys must be quoted
+`logging.level` entries like `com.vamshi.urlshortener: DEBUG` contain dots.
+YAML parsers can misread these as nested maps. Quote with `[...]`:
+`"[com.vamshi.urlshortener]": DEBUG`
+Spring Boot parses both forms, but the quoted form is spec-correct and linter-clean.
+
+---
