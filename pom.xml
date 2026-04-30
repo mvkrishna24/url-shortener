@@ -28,6 +28,9 @@
         <!-- Versions not managed by Spring Boot parent -->
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
+        <!-- Override: Spring Boot 3.3.x manages 1.18.34 which does not support JDK 23+.
+             1.18.42 adds JDK 25 support (annotation processor uses internal javac APIs). -->
+        <lombok.version>1.18.42</lombok.version>
     </properties>
 
     <dependencies>
@@ -200,6 +203,26 @@
 
     <build>
         <plugins>
+            <!--
+                Explicitly register Lombok as an annotation processor.
+                Service-loader discovery (the default) silently fails on JDK 23+ because
+                Lombok's javac bootstrap code accesses internal APIs that changed.
+                Registering it here forces the compiler plugin to isolate Lombok in its
+                own class loader and pass it directly to javac, bypassing discovery.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
