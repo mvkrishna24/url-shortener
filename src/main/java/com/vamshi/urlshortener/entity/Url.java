@@ -26,7 +26,6 @@ import java.time.OffsetDateTime;
 public class Url {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "short_code", nullable = false, length = 10)
