@@ -98,6 +98,27 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- ===== FLYWAY ===== -->
+        <!--
+            WHY Flyway over Liquibase?
+            - Plain SQL migrations: no XML/YAML abstraction to learn, what you write is
+              what runs in prod — easy to reason about and review in PRs.
+            - Versioned filenames (V1__..., V2__...) make ordering unambiguous.
+            - Checksum validation: Flyway fails fast if a previously-applied migration
+              is modified, preventing silent schema drift.
+            - Industry recognition: most interviewers and DBAs are familiar with it.
+            flyway-database-postgresql is required since Flyway 10 split vendor support
+            into separate modules (Spring Boot 3.3 brings Flyway 10.x).
+        -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <!-- ===== CODE GENERATION ===== -->
         <!-- Lombok: eliminates getters/setters/builders boilerplate at compile time -->
         <dependency>
