@@ -18,7 +18,12 @@ import java.util.Set;
 
 @Service
 public class UrlService {
+
     private static final Logger log = LoggerFactory.getLogger(UrlService.class);
+
+    // Thread-safe; UrlValidator is stateless after construction.
+    private static final UrlValidator URL_VALIDATOR = new UrlValidator(new String[]{"http", "https"});
+
     private static final Set<String> RESERVED_WORDS = Set.of(
             "api", "admin", "health", "actuator", "login", "signup", "register",
             "dashboard", "swagger", "docs", "metrics", "robots", "favicon"
@@ -28,7 +33,9 @@ public class UrlService {
     private final IdGeneratorService idGeneratorService;
     private final String baseUrl;
 
-    public UrlService(UrlRepository urlRepository, IdGeneratorService idGeneratorService, @Value("${app.base-url}") String baseUrl) {
+    public UrlService(UrlRepository urlRepository,
+                      IdGeneratorService idGeneratorService,
+                      @Value("${app.base-url}") String baseUrl) {
         this.urlRepository = urlRepository;
         this.idGeneratorService = idGeneratorService;
         this.baseUrl = baseUrl;
@@ -36,46 +43,60 @@ public class UrlService {
 
     @Transactional
     public UrlResponse shortenUrl(CreateUrlRequest request) {
-        UrlValidator validator = new UrlValidator(new String[]{"http", "https"});
-        if (!validator.isValid(request.longUrl())) {
-            throw new InvalidUrlException("Invalid longUrl format.");
+        if (!URL_VALIDATOR.isValid(request.longUrl())) {
+            throw new InvalidUrlException("longUrl is not a valid HTTP/HTTPS URL.");
         }
 
-        String shortCode;
         boolean isCustom = request.customAlias() != null && !request.customAlias().isBlank();
-        long id = idGeneratorService.generateId(); // Always grab an ID sequence to prevent primary key issues
 
+        // Validate alias before consuming an ID — a rejected alias wastes no sequence numbers.
         if (isCustom) {
-            shortCode = request.customAlias();
-            if (RESERVED_WORDS.contains(shortCode.toLowerCase())) {
-                throw new CustomAliasConflictException("Alias is reserved.");
+            String alias = request.customAlias();
+            if (RESERVED_WORDS.contains(alias.toLowerCase())) {
+                throw new CustomAliasConflictException("'" + alias + "' is a reserved word.");
             }
-            if (urlRepository.existsByShortCode(shortCode)) {
-                throw new CustomAliasConflictException("Alias is already taken.");
+            if (urlRepository.existsByShortCode(alias)) {
+                throw new CustomAliasConflictException("Custom alias '" + alias + "' is already taken.");
             }
-        } else {
-            shortCode = Base62Encoder.encode(id);
         }
 
-        Url url = Url.builder().id(id).shortCode(shortCode).longUrl(request.longUrl())
-                .customAlias(isCustom).expiresAt(request.expiresAt()).build();
+        long id = idGeneratorService.nextId();
+        String shortCode = isCustom ? request.customAlias() : Base62Encoder.encode(id);
 
-        Url savedUrl = urlRepository.save(url);
-        log.info("Shortened URL: {} -> {}", request.longUrl(), shortCode);
+        Url url = Url.builder()
+                .id(id)
+                .shortCode(shortCode)
+                .longUrl(request.longUrl())
+                .customAlias(isCustom)
+                .expiresAt(request.expiresAt())
+                .build();
 
-        return new UrlResponse(savedUrl.getShortCode(), baseUrl + "/" + savedUrl.getShortCode(),
-                savedUrl.getLongUrl(), savedUrl.getCreatedAt() != null ? savedUrl.getCreatedAt() : OffsetDateTime.now(), savedUrl.getExpiresAt());
+        Url saved = urlRepository.save(url);
+        log.info("Shortened: {} -> {}", request.longUrl(), shortCode);
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public String resolveShortCode(String shortCode) {
         Url url = urlRepository.findByShortCode(shortCode)
-                .orElseThrow(() -> new ShortCodeNotFoundException("Short code not found."));
+                .orElseThrow(() -> new ShortCodeNotFoundException("Short code not found: " + shortCode));
 
         if (url.getExpiresAt() != null && url.getExpiresAt().isBefore(OffsetDateTime.now())) {
-            throw new ShortCodeExpiredException("Short code has expired.");
+            throw new ShortCodeExpiredException("Short code has expired: " + shortCode);
         }
-        log.info("Resolved URL: {} -> {}", shortCode, url.getLongUrl());
+
+        log.info("Redirect: /{} -> {}", shortCode, url.getLongUrl());
         return url.getLongUrl();
+    }
+
+    private UrlResponse toResponse(Url url) {
+        OffsetDateTime createdAt = url.getCreatedAt() != null ? url.getCreatedAt() : OffsetDateTime.now();
+        return new UrlResponse(
+                url.getShortCode(),
+                baseUrl + "/" + url.getShortCode(),
+                url.getLongUrl(),
+                createdAt,
+                url.getExpiresAt()
+        );
     }
 }
