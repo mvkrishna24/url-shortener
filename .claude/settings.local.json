@@ -5,7 +5,11 @@
       "Bash(git commit -m ' *)",
       "PowerShell(docker compose up -d)",
       "PowerShell(docker compose ps)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git rm *)",
+      "Bash(git reset *)"
     ]
   }
 }
