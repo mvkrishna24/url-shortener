@@ -12,7 +12,7 @@
 spring:
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate         # Flyway runs all migrations on the Testcontainers DB; Hibernate validates
     show-sql: true
     properties:
       hibernate:
@@ -24,4 +24,4 @@ spring:
 logging:
   level:
     root: WARN
-    com.vamshi.urlshortener: DEBUG
+    "[com.vamshi.urlshortener]": DEBUG

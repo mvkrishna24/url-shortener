@@ -16,7 +16,7 @@ spring:
 logging:
   level:
     root: WARN
-    com.vamshi.urlshortener: INFO
+    "[com.vamshi.urlshortener]": INFO
 
 server:
   tomcat:
