@@ -1,0 +1,37 @@
+# ============================================================
+# DEV profile — runs against local Docker Compose stack.
+# Verbose logging, lenient security, schema auto-create.
+# ============================================================
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop      # Recreate schema on every start — safe for dev, NEVER in prod
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Use Caffeine (in-JVM) instead of Redis so you can develop without Redis running
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=600s
+
+logging:
+  level:
+    root: INFO
+    com.vamshi.urlshortener: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+
+management:
+  endpoint:
+    health:
+      show-details: always       # Show full health details in dev
+  endpoints:
+    web:
+      exposure:
+        include: "*"             # Expose all actuator endpoints in dev

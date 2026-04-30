@@ -1,0 +1,27 @@
+# ============================================================
+# TEST profile — activated by @ActiveProfiles("test") in test classes.
+#
+# PostgreSQL: Testcontainers via @ServiceConnection (Spring Boot 3.1+).
+#   Annotate a static PostgreSQLContainer field with @Container +
+#   @ServiceConnection and Spring auto-wires the datasource URL/creds.
+#
+# Redis: Use a GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
+#   and manually override spring.data.redis.host/port via @DynamicPropertySource.
+# ============================================================
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  cache:
+    type: none                   # Disable caching in unit/slice tests to avoid state leakage
+
+logging:
+  level:
+    root: WARN
+    com.vamshi.urlshortener: DEBUG

@@ -1,0 +1,104 @@
+spring:
+  application:
+    name: url-shortener
+
+  # Active profile defaults to 'dev'; override via SPRING_PROFILES_ACTIVE env var in prod.
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # --- Datasource ---
+  # Secrets come from environment variables; fallback values are safe for local dev only.
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:urlshortener}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: UrlShortenerHikariPool
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000    # ms — fail fast rather than queue forever
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # --- JPA ---
+  jpa:
+    open-in-view: false            # Never use OSIV — it hides N+1 bugs and hurts perf
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          batch_size: 50           # enables JDBC batching for bulk inserts
+        order_inserts: true
+        order_updates: true
+
+  # --- Redis ---
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 1000ms
+
+  # --- Cache ---
+  cache:
+    type: redis                    # profile-dev.yml overrides this to caffeine for offline dev
+
+  # --- Security: disable Spring Boot's auto-generated password banner ---
+  security:
+    user:
+      name: ${ADMIN_USER:admin}
+      password: ${ADMIN_PASSWORD:changeme}
+
+server:
+  port: ${SERVER_PORT:8080}
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/plain
+    min-response-size: 1024
+  tomcat:
+    max-threads: 200
+    accept-count: 100
+
+# --- Actuator ---
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  info:
+    env:
+      enabled: true
+
+# --- OpenAPI / Swagger ---
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# --- App-level config (custom namespace, read by @ConfigurationProperties beans later) ---
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  short-code-length: 7
+  cache:
+    url-ttl-seconds: 3600        # How long a short→long mapping lives in Redis
+    max-local-entries: 1000      # Caffeine L1 max size
+  rate-limit:
+    unauthenticated-rpm: 100
+    authenticated-rpm: 1000
+  jwt:
+    secret: ${JWT_SECRET:this-is-a-dev-only-secret-change-in-prod-must-be-32-chars-min}
+    expiry-hours: 24

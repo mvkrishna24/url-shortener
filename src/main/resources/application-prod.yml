@@ -1,0 +1,39 @@
+# ============================================================
+# PROD profile — all secrets MUST come from environment variables.
+# No defaults for sensitive values — the app will fail to start
+# if required env vars are missing, which is the correct behaviour.
+# ============================================================
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate         # Only validate schema — never mutate it in prod
+    show-sql: false
+
+  cache:
+    type: redis                  # Always use Redis in prod for distributed caching
+
+logging:
+  level:
+    root: WARN
+    com.vamshi.urlshortener: INFO
+
+server:
+  tomcat:
+    max-threads: 400
+
+management:
+  endpoint:
+    health:
+      show-details: never        # Don't leak internal state to unauthenticated callers
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+# In prod, strip Swagger UI — it should never be publicly accessible
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
