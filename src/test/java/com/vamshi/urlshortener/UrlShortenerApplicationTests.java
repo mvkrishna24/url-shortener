@@ -2,19 +2,21 @@ package com.vamshi.urlshortener;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * Smoke test: verifies the Spring context loads without errors.
- * This catches misconfigured beans, missing env vars with no defaults,
- * and circular dependencies before you ever hit an endpoint.
- */
 @SpringBootTest
 @ActiveProfiles("test")
+@Testcontainers
 class UrlShortenerApplicationTests {
 
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+
     @Test
-    void contextLoads() {
-        // If the context fails to start, this test fails with a descriptive error.
-    }
+    void contextLoads() {}
 }

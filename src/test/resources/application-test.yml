@@ -19,7 +19,14 @@ spring:
         format_sql: true
 
   cache:
-    type: none                   # Disable caching in unit/slice tests to avoid state leakage
+    type: none                   # Disable caching in tests to avoid state leakage
+
+  # Exclude Redis auto-configuration so tests don't require a running Redis instance.
+  # The cache layer is disabled above; no Redis operations happen in these tests.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
 logging:
   level:
