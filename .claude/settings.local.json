@@ -9,7 +9,16 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(git rm *)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(java -version)",
+      "Bash(mvn help:evaluate -Dexpression=lombok.version -q -DforceStdout)",
+      "WebSearch",
+      "WebFetch(domain:mvnrepository.com)",
+      "WebFetch(domain:projectlombok.org)",
+      "Bash(mvn compile *)",
+      "Bash(mvn dependency:tree -Dincludes=org.projectlombok:lombok -q)",
+      "Bash(mvn dependency:resolve -Dincludes=org.projectlombok:lombok)",
+      "Bash(mvn clean *)"
     ]
   }
 }
