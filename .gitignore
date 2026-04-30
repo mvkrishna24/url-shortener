@@ -1,0 +1,62 @@
+# ===== MAVEN =====
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ===== SPRING BOOT =====
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+spring-shell.log
+
+# ===== INTELLIJ IDEA =====
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# ===== ECLIPSE =====
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# ===== VS CODE =====
+.vscode/
+
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.jks
+application-local.yml
+application-secrets.yml
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ===== LOGS =====
+logs/
+*.log
+log/
+
+# ===== DOCKER =====
+# Don't ignore docker-compose.yml — that's checked in
+# Only ignore generated/override files
+docker-compose.override.yml
