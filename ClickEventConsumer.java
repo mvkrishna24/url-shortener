@@ -57,6 +57,7 @@ public class ClickEventConsumer {
             return;
         }
 
+        long start = System.currentTimeMillis();
         String sql = "INSERT INTO clicks (url_id, clicked_at, ip_address, referrer, country_code, device_type) " +
                      "VALUES (?, ?, ?, ?, ?, ?)";
 
@@ -94,6 +95,8 @@ public class ClickEventConsumer {
             }
         });
 
-        log.debug("Batch inserted {} click events", batch.size());
+        long elapsed = System.currentTimeMillis() - start;
+        log.debug("Batch inserted {} click events in {}ms (queue remaining: {})",
+                batch.size(), elapsed, publisher.getQueueSize());
     }
 }
