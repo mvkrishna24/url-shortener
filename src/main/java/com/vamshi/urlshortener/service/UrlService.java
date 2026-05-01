@@ -6,6 +6,8 @@ import com.vamshi.urlshortener.entity.Url;
 import com.vamshi.urlshortener.exception.Exceptions.*;
 import com.vamshi.urlshortener.repository.UrlRepository;
 import com.vamshi.urlshortener.util.Base62Encoder;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -21,7 +24,6 @@ public class UrlService {
 
     private static final Logger log = LoggerFactory.getLogger(UrlService.class);
 
-    // Thread-safe; UrlValidator is stateless after construction.
     private static final UrlValidator URL_VALIDATOR = new UrlValidator(new String[]{"http", "https"});
 
     private static final Set<String> RESERVED_WORDS = Set.of(
@@ -31,14 +33,26 @@ public class UrlService {
 
     private final UrlRepository urlRepository;
     private final IdGeneratorService idGeneratorService;
+    private final UrlCacheService urlCacheService;
     private final String baseUrl;
+    private final Counter cacheHits;
+    private final Counter cacheMisses;
 
     public UrlService(UrlRepository urlRepository,
                       IdGeneratorService idGeneratorService,
-                      @Value("${app.base-url}") String baseUrl) {
+                      UrlCacheService urlCacheService,
+                      @Value("${app.base-url}") String baseUrl,
+                      MeterRegistry meterRegistry) {
         this.urlRepository = urlRepository;
         this.idGeneratorService = idGeneratorService;
+        this.urlCacheService = urlCacheService;
         this.baseUrl = baseUrl;
+        this.cacheHits = Counter.builder("urlshortener.cache.hits")
+                .description("Redirect requests served from Redis cache")
+                .register(meterRegistry);
+        this.cacheMisses = Counter.builder("urlshortener.cache.misses")
+                .description("Redirect requests that required a PostgreSQL lookup")
+                .register(meterRegistry);
     }
 
     @Transactional
@@ -78,6 +92,14 @@ public class UrlService {
 
     @Transactional(readOnly = true)
     public String resolveShortCode(String shortCode) {
+        Optional<String> cached = urlCacheService.getLongUrl(shortCode);
+        if (cached.isPresent()) {
+            cacheHits.increment();
+            log.debug("Cache HIT: /{}", shortCode);
+            return cached.get();
+        }
+
+        cacheMisses.increment();
         Url url = urlRepository.findByShortCode(shortCode)
                 .orElseThrow(() -> new ShortCodeNotFoundException("Short code not found: " + shortCode));
 
@@ -85,7 +107,10 @@ public class UrlService {
             throw new ShortCodeExpiredException("Short code has expired: " + shortCode);
         }
 
-        log.info("Redirect: /{} -> {}", shortCode, url.getLongUrl());
+        // Populate cache on first DB read (read-through pattern).
+        // If Redis is down cacheLongUrl silently swallows the error.
+        urlCacheService.cacheLongUrl(shortCode, url.getLongUrl());
+        log.info("Cache MISS → DB: /{} -> {}", shortCode, url.getLongUrl());
         return url.getLongUrl();
     }
 

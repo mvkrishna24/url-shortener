@@ -91,6 +91,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Exposes Micrometer metrics in Prometheus format at /actuator/prometheus -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
 
         <!-- ===== AOP ===== -->
         <!-- Needed for @Transactional, future rate-limit aspect, logging aspect -->
