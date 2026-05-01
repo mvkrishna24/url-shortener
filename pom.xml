@@ -110,6 +110,25 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        
+        <!-- ===== ANALYTICS ===== -->
+        <!-- GeoIP for Country resolution -->
+        <dependency>
+            <groupId>com.maxmind.geoip2</groupId>
+            <artifactId>geoip2</artifactId>
+            <version>4.2.0</version>
+        </dependency>
+        <!-- Yauaa for User-Agent parsing -->
+        <dependency>
+            <groupId>nl.basjes.parse.useragent</groupId>
+            <artifactId>yauaa</artifactId>
+            <version>7.24.0</version>
+        </dependency>
+        <!-- JDBC Starter for high-throughput batch inserts -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
 
         <!-- ===== FLYWAY ===== -->
         <!--
