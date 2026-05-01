@@ -39,3 +39,8 @@ sequenceDiagram
 
 3. **Why JDBC Batch `batchUpdate` vs JPA `.saveAll()`?**
    JPA processes `saveAll()` as individual `INSERT` statements with round-trips unless extremely carefully configured (`hibernate.jdbc.batch_size` + disabling identity generation). By bypassing JPA and using Spring's `JdbcTemplate.batchUpdate()`, we pack 500 rows into a single network packet to PostgreSQL. 500 individual inserts takes ~250ms (0.5ms * 500 round-trips). A batched insert of 500 rows takes ~5-10ms. A 50x performance gain.
+
+4. **Why In-Memory Queue vs Kafka (for v1)?**
+   For a v1 MVP, introducing Kafka adds significant operational complexity (Zookeeper/KRaft, schema registries, extra containers). A `LinkedBlockingQueue` keeps the architecture strictly monolithic and simple to deploy.
+   - **Trade-off:** In-memory queues mean any events buffered in the queue during a JVM crash or restart are permanently lost.
+   - **Upgrade Path:** Once click volume outscales a single node's memory or database connection pool, the publisher can be trivially swapped to a `KafkaTemplate`, and the consumer to an `@KafkaListener`, allowing externalized durable buffering.
