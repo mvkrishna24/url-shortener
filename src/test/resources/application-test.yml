@@ -2,11 +2,10 @@
 # TEST profile — activated by @ActiveProfiles("test") in test classes.
 #
 # PostgreSQL: Testcontainers via @ServiceConnection (Spring Boot 3.1+).
-#   Annotate a static PostgreSQLContainer field with @Container +
-#   @ServiceConnection and Spring auto-wires the datasource URL/creds.
-#
-# Redis: Use a GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-#   and manually override spring.data.redis.host/port via @DynamicPropertySource.
+# Redis:      Testcontainers GenericContainer with @ServiceConnection.
+#             All integration tests extend AbstractIntegrationTest which
+#             declares both static containers; @ServiceConnection wires
+#             the host/port automatically.
 # ============================================================
 
 spring:
@@ -18,15 +17,10 @@ spring:
       hibernate:
         format_sql: true
 
+  # Spring Cache abstraction is not used (we call StringRedisTemplate directly),
+  # so 'none' here has no effect on UrlCacheService behaviour.
   cache:
-    type: none                   # Disable caching in tests to avoid state leakage
-
-  # Exclude Redis auto-configuration so tests don't require a running Redis instance.
-  # The cache layer is disabled above; no Redis operations happen in these tests.
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+    type: none
 
 logging:
   level:

@@ -9,6 +9,7 @@ import com.vamshi.urlshortener.exception.Exceptions.ShortCodeExpiredException;
 import com.vamshi.urlshortener.exception.Exceptions.ShortCodeNotFoundException;
 import com.vamshi.urlshortener.repository.UrlRepository;
 import com.vamshi.urlshortener.util.Base62Encoder;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,12 +32,15 @@ class UrlServiceTest {
 
     @Mock private UrlRepository urlRepository;
     @Mock private IdGeneratorService idGeneratorService;
+    @Mock private UrlCacheService urlCacheService;
 
     private UrlService urlService;
 
     @BeforeEach
     void setUp() {
-        urlService = new UrlService(urlRepository, idGeneratorService, BASE_URL);
+        urlService = new UrlService(
+                urlRepository, idGeneratorService, urlCacheService,
+                BASE_URL, new SimpleMeterRegistry());
     }
 
     // --- shortenUrl: happy path ---
@@ -110,25 +114,38 @@ class UrlServiceTest {
 
     @Test
     void shortenUrl_reservedAlias_doesNotConsumeId() {
-        // Alias validation must happen BEFORE nextId() is called — no wasted IDs on bad input.
         assertThatThrownBy(() ->
                 urlService.shortenUrl(new CreateUrlRequest("https://example.com", "admin", null)))
                 .isInstanceOf(CustomAliasConflictException.class);
         verifyNoInteractions(idGeneratorService);
     }
 
-    // --- resolveShortCode ---
+    // --- resolveShortCode: cache hit ---
 
     @Test
-    void resolveShortCode_found_returnsLongUrl() {
+    void resolveShortCode_cacheHit_skipsDatabase() {
+        when(urlCacheService.getLongUrl("abc")).thenReturn(Optional.of("https://example.com"));
+
+        assertThat(urlService.resolveShortCode("abc")).isEqualTo("https://example.com");
+        verifyNoInteractions(urlRepository);
+    }
+
+    // --- resolveShortCode: cache miss → DB ---
+
+    @Test
+    void resolveShortCode_cacheMiss_queriesDatabaseAndPopulatesCache() {
+        when(urlCacheService.getLongUrl("abc")).thenReturn(Optional.empty());
         Url url = Url.builder().id(1L).shortCode("abc").longUrl("https://example.com").build();
         when(urlRepository.findByShortCode("abc")).thenReturn(Optional.of(url));
 
         assertThat(urlService.resolveShortCode("abc")).isEqualTo("https://example.com");
+
+        verify(urlCacheService).cacheLongUrl("abc", "https://example.com");
     }
 
     @Test
     void resolveShortCode_notFound_throws() {
+        when(urlCacheService.getLongUrl("xyz")).thenReturn(Optional.empty());
         when(urlRepository.findByShortCode("xyz")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> urlService.resolveShortCode("xyz"))
@@ -137,6 +154,7 @@ class UrlServiceTest {
 
     @Test
     void resolveShortCode_expired_throws() {
+        when(urlCacheService.getLongUrl("old")).thenReturn(Optional.empty());
         Url url = Url.builder()
                 .id(1L).shortCode("old").longUrl("https://example.com")
                 .expiresAt(OffsetDateTime.now().minusMinutes(1))
@@ -149,6 +167,7 @@ class UrlServiceTest {
 
     @Test
     void resolveShortCode_notYetExpired_returnsLongUrl() {
+        when(urlCacheService.getLongUrl("ok")).thenReturn(Optional.empty());
         Url url = Url.builder()
                 .id(1L).shortCode("ok").longUrl("https://example.com")
                 .expiresAt(OffsetDateTime.now().plusHours(1))
