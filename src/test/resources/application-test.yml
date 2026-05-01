@@ -27,6 +27,11 @@ app:
   rate-limit:
     unauthenticated-rpm: 5
     authenticated-rpm: 10
+  jwt:
+    secret: test-secret-that-is-at-least-32-characters-long-for-hs256
+    expiry-hours: 1
+  cors:
+    allowed-origins: http://localhost:3000
 
 logging:
   level:
