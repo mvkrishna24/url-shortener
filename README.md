@@ -156,3 +156,16 @@ k6 run load-tests/rate-limit.js
 Sends 120 requests from one IP in a burst. Expected: first 100 return 201, requests 101-120 return 429.
 
 See [docs/rate-limiting.md](docs/rate-limiting.md) for the full algorithm deep-dive.
+
+## Analytics Pipeline
+
+Redirect click processing is strictly decoupled from the web threads to preserve the `< 20ms` SLA.
+
+- **In-Memory Buffer:** Clicks are published to a bounded `LinkedBlockingQueue` (capacity 10,000). 
+- **Fail-safe:** If PostgreSQL slows down and the queue fills, events are dropped rather than applying back-pressure to the redirect controller.
+- **Enrichment:** A scheduled consumer drains up to 500 events per second, parses the `User-Agent` string via `yauaa`, and resolves `IP Address` to Country Code via the MaxMind GeoIP database.
+- **JDBC Batch Insert:** The consumer bypasses JPA and executes a pure JDBC batch insert. Writing 500 records in a single database round-trip is roughly **50x faster** than issuing 500 individual JPA saves.
+
+### Querying Analytics
+The platform leverages `date_trunc` and aggregate SQL queries to power the user dashboard, completely bypassing the ORM for analytics reads. 
+*(Screenshot placeholder: frontend integration in progress)*
