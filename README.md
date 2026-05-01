@@ -55,3 +55,44 @@ make test        # mvn test (Testcontainers spins up its own DB)
 ```bash
 make down
 ```
+
+## Performance
+
+### Architecture: read-through cache
+
+```
+Client → RedirectController → UrlService
+                                  │
+                          ┌───────▼────────┐
+                          │ UrlCacheService │  Redis (TTL 1 h)
+                          └───────┬────────┘
+                                  │ miss
+                          ┌───────▼────────┐
+                          │  UrlRepository │  PostgreSQL
+                          └────────────────┘
+```
+
+Redirects (`GET /{shortCode}`) are served from Redis on cache hit — no database round-trip. On a warm cache the redirect path is a single network hop to Redis (~0.3 ms p99 on local network).
+
+### Why read-through, not write-through?
+
+Write-through populates the cache on every `POST /api/v1/urls`. Most shortened URLs are never clicked, so pre-warming all of them wastes Redis memory. Read-through only caches URLs that are actually resolved, naturally prioritising hot codes.
+
+### TTL choice: 1 hour
+
+Shortened URLs typically see peak traffic in the minutes to hours after creation (shared on social media, email campaigns, etc.). A 1-hour TTL covers that burst without holding cold entries forever. Infrequently accessed codes expire on their own — no eviction policy tuning needed.
+
+### Redis-down resilience
+
+Every `UrlCacheService` operation is wrapped in a try/catch. If Redis is unavailable, `getLongUrl` returns `Optional.empty()`, and `UrlService` falls through to PostgreSQL transparently. The service stays up; it just becomes slower. Once Redis recovers, the cache warms itself again naturally.
+
+### Observability
+
+Cache hit/miss counters are exposed via Micrometer at `/actuator/prometheus`:
+
+```
+urlshortener_cache_hits_total
+urlshortener_cache_misses_total
+```
+
+Hit rate formula: `hits / (hits + misses)`. Target: **≥ 85 %** under normal load (warm cache after first minute of traffic).
