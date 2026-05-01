@@ -20,9 +20,10 @@ public class AnalyticsService {
         String totalSql = "SELECT COUNT(*) FROM clicks WHERE url_id = ?";
         Long totalClicks = jdbcTemplate.queryForObject(totalSql, Long.class, urlId);
 
-        // Daily clicks using date_trunc
+        // Daily clicks using date_trunc. Cast to interval via multiplication — JDBC cannot
+        // parameterize inside a string literal ('? days' stays a literal, not a bind variable).
         String dailySql = "SELECT date_trunc('day', clicked_at) as click_date, COUNT(*) as count " +
-                          "FROM clicks WHERE url_id = ? AND clicked_at >= NOW() - INTERVAL '? days' " +
+                          "FROM clicks WHERE url_id = ? AND clicked_at >= NOW() - (? * INTERVAL '1 day') " +
                           "GROUP BY click_date ORDER BY click_date ASC";
         List<Map<String, Object>> dailyClicks = jdbcTemplate.queryForList(dailySql, urlId, days);
 
