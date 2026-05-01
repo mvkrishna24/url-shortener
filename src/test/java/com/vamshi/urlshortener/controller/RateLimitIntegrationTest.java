@@ -142,6 +142,19 @@ class RateLimitIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(header().exists("X-RateLimit-Reset"));
     }
 
+    @Test
+    void rateLimitReset_isEpochSecondInFuture() throws Exception {
+        var result = postUrl("https://example.com/reset-epoch-test")
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long reset     = Long.parseLong(result.getResponse().getHeader("X-RateLimit-Reset"));
+        long nowSeconds = System.currentTimeMillis() / 1000;
+
+        assertThat(reset).isGreaterThan(nowSeconds);
+        assertThat(reset).isLessThanOrEqualTo(nowSeconds + 61); // 60-second window + 1 s buffer
+    }
+
     // ── redirect endpoint not rate limited ───────────────────────────────────
 
     @Test
