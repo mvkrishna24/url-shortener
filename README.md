@@ -96,3 +96,63 @@ urlshortener_cache_misses_total
 ```
 
 Hit rate formula: `hits / (hits + misses)`. Target: **≥ 85 %** under normal load (warm cache after first minute of traffic).
+
+## Rate Limiting
+
+### Algorithm: Sliding Window Log via Redis Sorted Sets
+
+Every request to `/api/v1/**` is checked against a per-client quota stored in Redis. Each request is recorded as a scored entry in a sorted set (`score = timestamp in ms`). Old entries are evicted with a single `ZREMRANGEBYSCORE`, and `ZCARD` returns the exact count in O(1) — no scanning.
+
+```
+POST /api/v1/urls
+        │
+        ▼
+RateLimitInterceptor.preHandle()
+        │
+   extract client ID
+   (user:<name> if authed, ip:<addr> if anon)
+        │
+        ▼
+RateLimiterService.tryAcquire()   ─── Lua script (atomic) ──▶ Redis sorted set
+        │                                ZREMRANGEBYSCORE       key: ratelimit:<id>
+        │                                ZCARD
+        │                                ZADD (if allowed)
+        │
+   ┌────┴────┐
+allowed?    denied?
+   │            │
+set headers  throw RateLimitExceededException
+return true  → GlobalExceptionHandler → 429 JSON
+```
+
+### Tiers
+
+| Client | Identifier | Limit |
+|---|---|---|
+| Anonymous | `ip:<X-Forwarded-For or RemoteAddr>` | **100 req/min** |
+| Authenticated | `user:<principal name>` | **1 000 req/min** |
+| `GET /{shortCode}` | not intercepted | unlimited |
+
+### Response Headers
+
+Present on every `/api/v1/**` response (including 429):
+
+```
+X-RateLimit-Limit:     100
+X-RateLimit-Remaining: 47
+X-RateLimit-Reset:     1714521600
+```
+
+### Why Lua for atomicity
+
+The ZREMRANGEBYSCORE → ZCARD → ZADD sequence must be atomic. Without it, two concurrent requests can both read `count = limit - 1`, both admit themselves, and overshoot the limit. Redis runs Lua scripts single-threaded — the entire script executes without interruption.
+
+### Load test
+
+```bash
+k6 run load-tests/rate-limit.js
+```
+
+Sends 120 requests from one IP in a burst. Expected: first 100 return 201, requests 101-120 return 429.
+
+See [docs/rate-limiting.md](docs/rate-limiting.md) for the full algorithm deep-dive.
