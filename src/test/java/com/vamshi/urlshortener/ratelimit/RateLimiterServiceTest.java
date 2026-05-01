@@ -92,4 +92,25 @@ class RateLimiterServiceTest extends AbstractIntegrationTest {
         assertThat(last.allowed()).isTrue();
         assertThat(last.remaining()).isEqualTo(0);
     }
+
+    @Test
+    void afterWindowExpires_quotaResets() throws InterruptedException {
+        // Use a 1-second window so the test doesn't need to wait 60 seconds
+        Duration shortWindow = Duration.ofSeconds(1);
+
+        // Exhaust the limit
+        for (int i = 0; i < 3; i++) {
+            rateLimiterService.tryAcquire("test-window-expiry", 3, shortWindow);
+        }
+        AcquireResult denied = rateLimiterService.tryAcquire("test-window-expiry", 3, shortWindow);
+        assertThat(denied.allowed()).isFalse();
+
+        // Wait for the window to close
+        Thread.sleep(1100);
+
+        // Quota should be fully reset
+        AcquireResult reset = rateLimiterService.tryAcquire("test-window-expiry", 3, shortWindow);
+        assertThat(reset.allowed()).isTrue();
+        assertThat(reset.remaining()).isEqualTo(2);
+    }
 }
