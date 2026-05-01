@@ -1,5 +1,7 @@
 package com.vamshi.urlshortener.ratelimit;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -43,9 +45,13 @@ public class RateLimiterService {
             RedisScript.of(new ClassPathResource("scripts/sliding_window.lua"), List.class);
 
     private final StringRedisTemplate redis;
+    private final Counter rejectedCounter;
 
-    public RateLimiterService(StringRedisTemplate redis) {
+    public RateLimiterService(StringRedisTemplate redis, MeterRegistry meterRegistry) {
         this.redis = redis;
+        this.rejectedCounter = Counter.builder("urlshortener.ratelimit.rejected")
+                .description("Number of requests rejected by the rate limiter")
+                .register(meterRegistry);
     }
 
     /**
@@ -77,9 +83,12 @@ public class RateLimiterService {
                 return failOpen(limit, nowMs, window);
             }
 
-            boolean allowed  = result.get(0) == 1L;
+            boolean allowed   = result.get(0) == 1L;
             int     remaining = result.get(1).intValue();
             long    reset     = result.get(2);
+            if (!allowed) {
+                rejectedCounter.increment();
+            }
             return new AcquireResult(allowed, limit, remaining, reset);
 
         } catch (Exception e) {
