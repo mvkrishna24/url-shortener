@@ -1,6 +1,8 @@
 package com.vamshi.urlshortener.exception;
 
 import com.vamshi.urlshortener.exception.Exceptions.*;
+import com.vamshi.urlshortener.ratelimit.AcquireResult;
+import com.vamshi.urlshortener.ratelimit.RateLimitExceededException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +34,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CustomAliasConflictException.class)
     public ResponseEntity<ApiErrorResponse> handleConflict(CustomAliasConflictException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleRateLimit(RateLimitExceededException ex, HttpServletRequest request) {
+        AcquireResult r = ex.getAcquireResult();
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("X-RateLimit-Limit",     String.valueOf(r.limit()))
+                .header("X-RateLimit-Remaining", "0")
+                .header("X-RateLimit-Reset",     String.valueOf(r.resetEpochSeconds()))
+                .body(new ApiErrorResponse(
+                        OffsetDateTime.now().toString(),
+                        HttpStatus.TOO_MANY_REQUESTS.value(),
+                        "Too Many Requests",
+                        "Rate limit exceeded. Limit: " + r.limit() + " req/min. " +
+                        "Retry after epoch second: " + r.resetEpochSeconds(),
+                        request.getRequestURI()
+                ));
     }
 
     @ExceptionHandler(Exception.class)
