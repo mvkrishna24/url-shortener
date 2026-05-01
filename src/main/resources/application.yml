@@ -114,8 +114,9 @@ app:
     url-ttl-seconds: 3600        # How long a short→long mapping lives in Redis
     max-local-entries: 1000      # Caffeine L1 max size
   rate-limit:
-    unauthenticated-rpm: 100
-    authenticated-rpm: 1000
+    unauthenticated-rpm: 100    # anonymous (IP-based): requests per minute
+    authenticated-rpm: 1000     # authenticated (user-based): requests per minute
+    # Rejection metric: urlshortener_ratelimit_rejected_total (Prometheus)
   jwt:
     secret: ${JWT_SECRET:this-is-a-dev-only-secret-change-in-prod-must-be-32-chars-min}
     expiry-hours: 24
