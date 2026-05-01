@@ -1,6 +1,7 @@
 package com.vamshi.urlshortener.analytics;
 
 import com.vamshi.urlshortener.analytics.dto.ClickEvent;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,11 +14,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 @Service
 public class ClickEventPublisher {
 
-    private final LinkedBlockingQueue<ClickEvent> queue = new LinkedBlockingQueue<>(10000);
+    static final int QUEUE_CAPACITY = 10_000;
+
+    private final LinkedBlockingQueue<ClickEvent> queue = new LinkedBlockingQueue<>(QUEUE_CAPACITY);
     private final MeterRegistry meterRegistry;
 
     public ClickEventPublisher(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
+        Gauge.builder("urlshortener.clicks.queue.size", queue, LinkedBlockingQueue::size)
+                .description("Current number of click events buffered in the in-memory queue")
+                .register(meterRegistry);
     }
 
     public void publish(ClickEvent event) {
