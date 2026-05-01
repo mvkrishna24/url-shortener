@@ -2,6 +2,7 @@ package com.vamshi.urlshortener.analytics;
 
 import com.vamshi.urlshortener.analytics.dto.AnalyticsResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -9,14 +10,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AnalyticsService {
 
+    private static final long SLOW_QUERY_THRESHOLD_MS = 500;
+
     private final JdbcTemplate jdbcTemplate;
 
     public AnalyticsResponse getAnalytics(Long urlId, int days) {
-        
+        long start = System.currentTimeMillis();
+
         String totalSql = "SELECT COUNT(*) FROM clicks WHERE url_id = ?";
         Long totalClicks = jdbcTemplate.queryForObject(totalSql, Long.class, urlId);
 
@@ -45,6 +50,11 @@ public class AnalyticsService {
                 Long count = ((Number) row.get("count")).longValue();
                 deviceBreakdown.put(device, (count * 100.0) / totalClicks);
             });
+        }
+
+        long elapsed = System.currentTimeMillis() - start;
+        if (elapsed > SLOW_QUERY_THRESHOLD_MS) {
+            log.warn("Analytics queries for urlId={} took {}ms (threshold={}ms)", urlId, elapsed, SLOW_QUERY_THRESHOLD_MS);
         }
 
         return AnalyticsResponse.builder().totalClicks(totalClicks != null ? totalClicks : 0)
