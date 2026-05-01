@@ -24,13 +24,18 @@ public class JwtService {
     }
 
     public String generateToken(Long userId, String email) {
+        long expiryMillis = expiryHours * 3_600_000L;
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("email", email)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiryHours * 3600000))
+                .expiration(new Date(System.currentTimeMillis() + expiryMillis))
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    public String extractEmail(String token) {
+        return (String) extractAllClaims(token).get("email");
     }
 
     public Claims extractAllClaims(String token) {
