@@ -60,3 +60,7 @@ log/
 # Don't ignore docker-compose.yml — that's checked in
 # Only ignore generated/override files
 docker-compose.override.yml
+
+# ===== GEOIP =====
+# MaxMind GeoLite2 database — download separately, never commit (license + 30MB binary)
+GeoLite2-*.mmdb
