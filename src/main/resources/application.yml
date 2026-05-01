@@ -93,6 +93,10 @@ management:
   info:
     env:
       enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true   # enables p50/p95/p99 histograms for HTTP latency
 
 # --- OpenAPI / Swagger ---
 springdoc:
