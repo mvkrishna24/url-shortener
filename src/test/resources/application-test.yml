@@ -22,6 +22,12 @@ spring:
   cache:
     type: none
 
+# Use small limits so integration tests can trigger 429 quickly (5 requests instead of 100)
+app:
+  rate-limit:
+    unauthenticated-rpm: 5
+    authenticated-rpm: 10
+
 logging:
   level:
     root: WARN
