@@ -28,7 +28,8 @@ public class UrlService {
 
     private static final Set<String> RESERVED_WORDS = Set.of(
             "api", "admin", "health", "actuator", "login", "signup", "register",
-            "dashboard", "swagger", "docs", "metrics", "robots", "favicon"
+            "dashboard", "swagger", "docs", "metrics", "robots", "favicon",
+            "auth", "analytics", "users", "me"
     );
 
     private final UrlRepository urlRepository;
