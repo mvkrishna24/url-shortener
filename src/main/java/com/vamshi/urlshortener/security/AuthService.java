@@ -26,11 +26,12 @@ public class AuthService {
 
     @Transactional
     public UserResponse signup(SignupRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String email = request.getEmail().toLowerCase().strip();
+        if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email already in use");
         }
         User user = User.builder()
-                .email(request.getEmail())
+                .email(email)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .build();
         user = userRepository.save(user);
@@ -39,12 +40,13 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        log.info("Authentication attempt for email: {}", request.getEmail());
-        User user = userRepository.findByEmail(request.getEmail())
+        String email = request.getEmail().toLowerCase().strip();
+        log.info("Authentication attempt for email: {}", email);
+        User user = userRepository.findByEmail(email)
                 .filter(u -> passwordEncoder.matches(request.getPassword(), u.getPasswordHash()))
                 .orElseThrow(() -> new BadCredentialsException(SecurityConstants.INVALID_CREDENTIALS_MSG));
         
-        log.info("Authentication successful for email: {}", request.getEmail());
+        log.info("Authentication successful for email: {}", email);
         String token = jwtService.generateToken(user.getId(), user.getEmail());
         return new AuthResponse(token, jwtService.getExpirySeconds(), new UserResponse(user.getId(), user.getEmail()));
     }
