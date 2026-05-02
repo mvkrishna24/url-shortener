@@ -1,0 +1,25 @@
+# Exclude build output — the Docker build stage runs Maven itself
+target/
+
+# Git history is irrelevant inside the image
+.git/
+.gitignore
+
+# IDE project files
+.idea/
+*.iml
+.vscode/
+
+# Maven wrapper (not needed; image ships Maven)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Docs and scripts don't belong in the runtime image
+docs/
+load-tests/
+scripts/
+*.md
+
+# Test containers / CI config
+.github/
