@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Profile-aware Logback configuration.
+
+  prod  → LogstashEncoder: one JSON object per log line.
+          Render's log aggregator (and tools like Datadog/Loki) parse JSON natively,
+          enabling structured querying: filter by level, traceId, shortCode, etc.
+
+  other → Spring Boot's default coloured console output for developer ergonomics.
+-->
+<configuration>
+
+    <!-- ── Production: structured JSON ───────────────────────────────────── -->
+    <springProfile name="prod">
+        <appender name="JSON_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- Include MDC fields (requestId, shortCode) as top-level JSON keys -->
+                <includeMdc>true</includeMdc>
+                <!-- Skip expensive stack-trace analysis — just emit the message -->
+                <includeCallerData>false</includeCallerData>
+                <!-- App name appears as "application" in every log event -->
+                <customFields>{"application":"url-shortener"}</customFields>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="JSON_STDOUT"/>
+        </root>
+
+        <!-- Quieten noisy libraries -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate"       level="WARN"/>
+        <logger name="com.zaxxer.hikari"   level="WARN"/>
+        <logger name="io.lettuce"          level="WARN"/>
+    </springProfile>
+
+    <!-- ── All other profiles: default Spring Boot console output ─────────── -->
+    <springProfile name="!prod">
+        <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>

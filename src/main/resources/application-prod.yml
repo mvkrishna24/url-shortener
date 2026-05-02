@@ -1,39 +1,71 @@
 # ============================================================
-# PROD profile — all secrets MUST come from environment variables.
-# No defaults for sensitive values — the app will fail to start
-# if required env vars are missing, which is the correct behaviour.
+# PROD profile — activated by SPRING_PROFILES_ACTIVE=prod
+#
+# Deployed on Render. All secrets come from environment variables.
+# No sensitive defaults — the app fails fast if required vars are missing.
 # ============================================================
 
 spring:
   jpa:
     hibernate:
-      ddl-auto: validate         # Only validate schema — never mutate it in prod
+      ddl-auto: validate            # Flyway owns the schema; Hibernate only verifies
     show-sql: false
 
-  cache:
-    type: redis                  # Always use Redis in prod for distributed caching
+  # Redis: accept a full connection URL (Upstash / Render KV format).
+  # spring.data.redis.url takes precedence over host/port/password.
+  # Format: redis://[:password@]host:port  or  rediss://... for TLS (Upstash)
+  data:
+    redis:
+      url: ${REDIS_URL}
+      lettuce:
+        pool:
+          max-active: 8             # Upstash free tier: 100 max concurrent connections
+          max-idle: 4
+          min-idle: 1
 
+  # HikariCP: Render free PostgreSQL allows 25 simultaneous connections total.
+  # Reserve headroom for migrations, health checks, and the connection reaper.
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  cache:
+    type: redis
+
+  flyway:
+    clean-disabled: true            # NEVER clean in production
+
+# Render sets PORT; this overrides server.port from application.yml.
+server:
+  port: ${PORT:8080}
+  tomcat:
+    max-threads: 200
+  # Resolve https:// URLs correctly when behind Render's SSL load balancer.
+  forward-headers-strategy: NATIVE
+
+# App-level config
+app:
+  base-url: ${APP_BASE_URL}        # Set to https://<your-service-name>.onrender.com in Render
+
+# Logging: JSON via logback-spring.xml (springProfile name="prod")
 logging:
   level:
-    root: WARN
-    "[com.vamshi.urlshortener]": INFO
-
-server:
-  tomcat:
-    max-threads: 400
+    root: INFO
+    com.vamshi.urlshortener: INFO
 
 management:
   endpoint:
     health:
-      show-details: never        # Don't leak internal state to unauthenticated callers
+      show-details: never           # Never leak internal state to unauthenticated callers
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus   # Keep prometheus for optional Grafana Cloud
 
-# In prod, strip Swagger UI — it should never be publicly accessible
+# Keep Swagger UI enabled — it's a portfolio feature and part of the live demo.
 springdoc:
   swagger-ui:
-    enabled: false
+    enabled: true
   api-docs:
-    enabled: false
+    enabled: true

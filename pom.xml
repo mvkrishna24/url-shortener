@@ -97,6 +97,13 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <!-- Structured JSON logging for production log aggregators (Render, Datadog, etc.) -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>7.4</version>
+        </dependency>
+
         <!-- ===== AOP ===== -->
         <!-- Needed for @Transactional, future rate-limit aspect, logging aspect -->
         <dependency>
