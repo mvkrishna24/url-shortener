@@ -1,7 +1,7 @@
 package com.vamshi.urlshortener.user;
 
-import com.vamshi.urlshortener.url.Url;
-import com.vamshi.urlshortener.url.UrlRepository;
+import com.vamshi.urlshortener.entity.Url;
+import com.vamshi.urlshortener.repository.UrlRepository;
 import com.vamshi.urlshortener.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
