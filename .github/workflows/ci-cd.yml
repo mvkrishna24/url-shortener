@@ -1,0 +1,74 @@
+name: CI / CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Test ──────────────────────────────────────────────────────────────────
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven          # caches ~/.m2/repository keyed on pom.xml hash
+
+      # Testcontainers requires Docker, which ubuntu-latest provides out of the box.
+      # RYUK_DISABLED prevents the reaper daemon from causing spurious socket errors
+      # in some CI environments.
+      - name: Run tests (unit + integration with Testcontainers)
+        run: mvn clean verify -B -q
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+
+  # ── Deploy ────────────────────────────────────────────────────────────────
+  # Only trigger a Render deploy on pushes to main (not on PRs).
+  deploy:
+    name: Deploy to Render
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render deploy hook
+        # Render's deploy hook is a plain HTTP POST. The URL contains a secret
+        # token — store it as a GitHub Actions secret named RENDER_DEPLOY_HOOK_URL.
+        run: |
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" \
+            -o /dev/null -w "HTTP status: %{http_code}\n"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+      - name: Wait for deployment to become healthy
+        # Poll /actuator/health every 15 s for up to 5 minutes.
+        # Render's free tier can take 2-3 min to build and start the container.
+        run: |
+          echo "Waiting for deployment to come online..."
+          for i in $(seq 1 20); do
+            STATUS=$(curl -sf "$APP_BASE_URL/actuator/health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','DOWN'))" 2>/dev/null || echo "DOWN")
+            echo "Attempt $i: $STATUS"
+            if [ "$STATUS" = "UP" ]; then
+              echo "Service is UP!"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Service did not become healthy after 5 minutes."
+          exit 1
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+
+      - name: Run smoke tests
+        run: bash bin/smoke-test.sh "$APP_BASE_URL"
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
