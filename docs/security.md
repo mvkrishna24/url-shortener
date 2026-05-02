@@ -23,9 +23,18 @@ A typical vulnerability is returning distinct error messages like `"User not fou
 - **Solution:** Our `AuthService` handles `findByEmail` empty results and password mismatch failures identically, throwing a `BadCredentialsException` utilizing a generic `"Invalid credentials"` constant.
 - **Logging:** We still output explicit internal `log.warn()` messages indicating precisely *why* the login failed for observability, but the HTTP response remains opaque to the client.
 
+## Email Normalization
+All email addresses are lowercased and whitespace-stripped before storage and lookup (`email.toLowerCase().strip()`). This prevents duplicate accounts for `User@Example.com` vs `user@example.com` and guards against invisible-whitespace injection in login requests.
+
+## CORS Policy
+`SecurityConfig` reads allowed origins from `app.cors.allowed-origins` (comma-separated). In production this must be set to the exact frontend domain — wildcards (`*`) are explicitly rejected by `setAllowedOrigins`. Credentials are not shared cross-origin (`allowCredentials` is left unset / false), since the JWT is carried in the `Authorization` header, not a cookie.
+
+## Cache-Control on Auth Responses
+`SecurityConfig` registers a `CacheControlHeadersWriter` which emits `Cache-Control: no-cache, no-store, max-age=0, must-revalidate` on every response. This prevents browsers and intermediary proxies from caching JWT tokens returned by `/api/v1/auth/login`.
+
 ## Secure Logging
 - We log standard application-level `log.info("Authentication attempt for email: {}")`.
-- **Never** log passwords or tokens. 
+- **Never** log passwords or tokens.
 
 ## Future Improvements
 To make this truly enterprise-grade, subsequent iterations should implement:
@@ -33,3 +42,4 @@ To make this truly enterprise-grade, subsequent iterations should implement:
 2. **MFA (2FA):** Integrate TOTP (Time-Based One-Time Password) via Authenticator apps.
 3. **Password Resets:** Short-lived expiring email tokens stored in the DB alongside Spring Email.
 4. **Token Blacklist:** Storing explicitly "logged out" JWT `jti` claims in Redis until their expiration passes.
+5. **Refresh Tokens:** Issue long-lived refresh tokens via `HttpOnly` + `Secure` + `SameSite=Strict` cookies, eliminating the need to store tokens in `localStorage`.
