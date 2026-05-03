@@ -18,7 +18,12 @@
       "Bash(mvn compile *)",
       "Bash(mvn dependency:tree -Dincludes=org.projectlombok:lombok -q)",
       "Bash(mvn dependency:resolve -Dincludes=org.projectlombok:lombok)",
-      "Bash(mvn clean *)"
+      "Bash(mvn clean *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(git restore *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\vamshi\\\\Projects\\\\url-shortener\" -Recurse -Filter \"*.java\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)"
     ]
   }
 }

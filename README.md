@@ -1,170 +1,56 @@
 # Distributed URL Shortener
 
-> Production-grade URL shortener handling 800+ RPS with sub-20ms p99 redirect latency
+**Author:** Martha Vamshi Krishna  
+**Email:** marthavamshikrishna1024@gmail.com
 
-[![CI](https://github.com/mvkrishna24/url-shortener/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/mvkrishna24/url-shortener/actions/workflows/ci-cd.yml)
-![Java](https://img.shields.io/badge/Java-17-blue)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
-![Redis](https://img.shields.io/badge/Redis-7-red)
-![Docker](https://img.shields.io/badge/Docker-ready-blue)
+## Overview
+A production-grade Distributed URL Shortener in Java and Spring Boot designed to handle high concurrency with low latency. The goal of this project is to mimic the exact SLAs of platforms like Bitly, handling 800+ requests per second with sub-20 millisecond p99 redirect latency. 
 
-**[Live Demo](https://url-shortener-latest.onrender.com)** | **[Swagger UI](https://url-shortener-latest.onrender.com/swagger-ui.html)**
+Instead of building a simple CRUD app, this project focuses heavily on backend system design, performance tuning, and decoupling heavy analytics pipelines from critical read paths.
 
-> **Note:** Live demo runs on Render's free tier — the first request after 15 min of inactivity may take ~30 s while the instance wakes up.
+## Architecture Highlights
 
-## Why I Built This
-Most URL shorteners are toy CRUD apps, but at scale, they present complex system design challenges involving distributed caching, concurrent data structures, and async processing. I built this to dive deep into production-grade performance tuning, specifically aiming to master caching strategies and lock-free rate limiting under high concurrency. Real-world platforms like Bitly or TinyURL handle billions of redirects per day with sub-50ms latency; this project implements the exact same architectural patterns they use to achieve those SLAs.
-
-## Key Features
-*   **High-Speed Redirects:** Sub-20ms p99 redirect latency backed by a distributed multi-layer caching system.
-*   **URL Shortening:** Fast, collision-free base62 encoding.
-*   **Async Click Analytics:** Real-time metrics (location, device, user-agent) tracked asynchronously without impacting redirect SLA.
-*   **Tiered Rate Limiting:** Sliding-window log implementation protecting all APIs from abuse.
-*   **Secure Auth:** JWT-based authentication and authorization for user-specific URL management.
-
-## Engineering Highlights
-*   **Batch-allocated Base62 IDs:** Eliminates per-request database round-trips for ID generation, avoiding sequence bottlenecks.
-*   **Read-through Redis cache:** Achieved an **89% hit rate**, resulting in a **9x DB load reduction** under peak traffic.
-*   **Sliding-window rate limiter:** Powered by an atomic Redis Lua script, delivering sub-1ms decision latency while preventing TOCTOU race conditions.
-*   **Async click analytics:** Fire-and-forget in-memory pipeline combined with JDBC batch inserts keeps tracking overhead entirely off the critical path.
-*   **JWT-based Auth:** Stateless authentication pipeline secured with BCrypt password hashing.
-*   **Comprehensive Test Coverage:** Fully integrated with Testcontainers, ensuring all unit and integration tests run against real PostgreSQL and Redis engines, not fragile mocks.
-
-## Architecture Diagram
-
-```mermaid
-graph LR
-    Client[Client] --> LB[Load Balancer]
-    LB --> App[Spring Boot App]
-    
-    subgraph API & Domain
-    App --> Auth[Auth Filter]
-    Auth --> RateLimit[Rate Limiter]
-    RateLimit --> Controller[Controller -> Service]
-    end
-    
-    Controller --> Cache{Redis Cache}
-    Cache -->|Hit| Controller
-    Cache -->|Miss| DB[(PostgreSQL)]
-    DB --> Cache
-    
-    Controller -->|Fire & Forget| Queue[In-Memory Queue]
-    Queue --> Consumer[Async Consumer]
-    Consumer --> ClicksDB[(Clicks Table)]
-```
-*(See docs/architecture.md for detailed sequence diagrams.)*
+* **Batch-Allocated Base62 ID Generation:** Instead of using slow database sequences for every request or long UUIDs, the application requests blocks of 10,000 IDs from PostgreSQL. It holds them in an `AtomicLong` and dispenses them lock-free in memory. This mathematically guarantees collision-free short strings while removing the database from the critical write path.
+* **Read-Through Redis Cache:** The read path utilizes a Read-Through caching strategy with a 1-hour TTL, achieving an 89% cache hit rate during load testing. This inherently prioritizes "hot" URLs, avoiding the memory bloat of Write-Through caching and reducing DB CPU utilization by 9x.
+* **Atomic Sliding-Window Rate Limiting:** To protect the platform from abuse without introducing significant overhead, I engineered a sliding-window log rate limiter. By pushing the logic into a Redis Lua script, the system evaluates limits in a single, atomic, single-threaded operation using sorted sets, eliminating TOCTOU (time-of-check to time-of-use) race conditions with sub-1ms overhead.
+* **Decoupled Async Analytics Pipeline:** Click events are dropped into a bounded in-memory `LinkedBlockingQueue` to instantly return 302 redirects. A scheduled background worker drains the queue, runs GeoIP lookups via a MaxMind database, and uses pure JDBC batching to insert hundreds of records into Postgres simultaneously—operating ~50x faster than standard Hibernate.
+* **Resilience & Fail-Open Design:** The system is designed to degrade gracefully. If the Redis cluster goes offline, the cache service catches the connection exception and transparently falls back to querying PostgreSQL directly.
 
 ## Tech Stack
+* **Language:** Java 17
+* **Framework:** Spring Boot 3
+* **Database:** PostgreSQL
+* **Cache & Rate Limiting:** Redis
+* **Infrastructure:** Docker
+* **Testing:** Testcontainers (Integration Testing)
 
-| Layer | Technology | Why |
-|---|---|---|
-| Runtime | Java 17 | LTS stability, optimized G1GC performance for predictable latencies. |
-| Framework | Spring Boot 3.x | Rapid API development, excellent auto-configuration, robust dependency injection. |
-| Primary DB | PostgreSQL 16 | ACID compliance, `TIMESTAMPTZ` accuracy, excellent JDBC batching for analytics. |
-| Cache & Rate Limit | Redis 7 | Sub-millisecond reads, atomic Lua scripts for rate limiting, and exact TTL eviction. |
-| Auth | JWT (JJWT) & BCrypt | Stateless, horizontally scalable authentication. |
-| Infrastructure | Docker & Compose | Deterministic local environments that perfectly match production parity. |
+## API Reference
 
-## Performance
-*(Metrics extracted from local K6 load tests and Prometheus)*
+### 1. Authentication
+* **Endpoint:** `POST /api/v1/auth/login`
+* **Rate Limit:** 10 req/min (IP based)
 
-*   **Throughput:** 800+ Requests Per Second (RPS) on consumer hardware.
-*   **Latencies:** p50: ~3ms | p95: ~12ms | p99: <20ms
-*   **Cache:** 89% hit rate, 9x DB load reduction.
-*   **Resource Utilization:** Stable at ~250MB heap under load with minimal GC pauses.
+### 2. URL Management
+* **Endpoint:** `POST /api/v1/urls`
+* **Auth Required:** Yes (Bearer Token)
+* **Rate Limit:** 1,000 req/min (User based)
 
-!k6 Load Test Results
-!Grafana Dashboard
+### 3. Redirects
+* **Endpoint:** `GET /api/v1/{shortCode}`
+* **Rate Limit:** Unlimited
+* **Response:** `302 Found` with `Location: <LongUrl>` header.
 
-## API Documentation
-*Note: The full Swagger UI is available at `http://localhost:8080/swagger-ui.html` when running.*
+## Getting Started
+1. Ensure you have Docker installed and running.
+2. Clone this repository.
+3. Build the project and run tests (this will spin up Testcontainers for PostgreSQL and Redis):
+   ```bash
+   ./mvnw clean package
+   ```
+4. Run the application:
+   ```bash
+   ./mvnw spring-boot:run
+   ```
 
-**1. Authenticate (Get JWT)**
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "password"}'
-```
-
-**2. Shorten URL**
-```bash
-curl -X POST http://localhost:8080/api/v1/urls \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"longUrl": "https://example.com/very/long/article"}'
-```
-
-**3. Redirect**
-```bash
-curl -i http://localhost:8080/aB3x9
-```
-
-*(See docs/api.md for full endpoint schemas and error codes.)*
-
-## Running Locally
-
-**Prerequisites:** Docker, Java 17+, Maven 3.9+
-
-Run the full stack in 4 commands:
-```bash
-git clone https://github.com/vamshi/url-shortener.git
-cd url-shortener
-make up
-curl http://localhost:8080/actuator/health
-```
-
-## Testing
-
-*   **Unit & Integration Tests:**
-    ```bash
-    mvn test
-    ```
-    *(Integration tests use Testcontainers to spin up ephemeral Postgres and Redis instances.)*
-*   **Load Tests:**
-    ```bash
-    k6 run load-tests/redirect-load.js
-    ```
-
-## Project Structure
-
-```text
-src/main/java/com/vamshi/urlshortener
-├── config        # Infrastructure wiring (Security, Async, OpenAPI, Redis)
-├── controller    # REST endpoints and GlobalExceptionHandler
-├── dto           # Immutable Request/Response data transfer objects
-├── entity        # JPA domain models (Url, Click, User)
-├── repository    # Spring Data JPA and custom pure-JDBC interfaces
-├── security      # JWT filters, extraction, and validation
-├── service       # Core business logic, cache strategies, and rate limiting
-└── util          # Helpers (Base62 encoding, User-Agent parsers)
-```
-
-## Design Decisions
-See docs/design-decisions.md for deep dives into:
-*   Why batch counters over UUID/Snowflake
-*   Why read-through over write-through caching
-*   Why in-memory queue over Kafka for v1
-*   Why sliding window over token bucket for rate limiting
-
-## Future Improvements
-*   Migrate analytics queue to Kafka for durability and replayability.
-*   Add Redis cluster for cache horizontal scaling.
-*   Configure Read Replicas for analytics dashboard queries.
-*   Add link preview (OG tag fetcher) on URL creation.
-*   Implement Refresh tokens for auth.
-*   Build a React Admin dashboard.
-
-## What I Learned
-*   **Database connection lifecycles:** The critical importance of disabling `open-in-view` to prevent connection pool exhaustion during slow downstream HTTP requests.
-*   **Redis Lua Atomicity:** Learned how to execute multi-step commands as a single isolated operation to prevent TOCTOU race conditions in high-concurrency rate limiting.
-*   **JPA vs JDBC Batching:** Discovered the massive throughput difference (~50x) between row-by-row JPA saves and pure JDBC batch inserts for analytics pipelines.
-*   **Testing Philosophy:** Realized that mocking databases hides crucial dialect and constraint bugs; spinning up ephemeral Docker containers via Testcontainers is the only way to write trustworthy integration tests.
-
-## License & Author
-
-*   **License:** MIT (See LICENSE)
-*   **Author:** Vamshi
-*   **Portfolio:** vamshi.dev
-*   **LinkedIn:** linkedin.com/in/vamshi
-*   **Email:** hello@vamshi.dev
+## System Design Deep Dive
+I treated this project as a high-concurrency performance tuning exercise. Feel free to explore the `/docs` folder for architecture diagrams, caching strategies, and mathematical rationales for the architectural choices.
