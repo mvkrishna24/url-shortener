@@ -1,5 +1,6 @@
 package com.vamshi.urlshortener.ratelimit;
 
+import com.vamshi.urlshortener.util.CacheKeys;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
@@ -36,7 +37,7 @@ public class RateLimiterService {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimiterService.class);
 
-    public static final String KEY_PREFIX = "ratelimit:";
+    public static final String KEY_PREFIX = CacheKeys.RATELIMIT_PREFIX;
 
     // RedisScript.of(Resource) computes the SHA1 hash once at startup.
     // Subsequent calls use EVALSHA (script caching on the Redis server side),

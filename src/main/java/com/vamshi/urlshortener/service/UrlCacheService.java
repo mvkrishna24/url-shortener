@@ -1,5 +1,6 @@
 package com.vamshi.urlshortener.service;
 
+import com.vamshi.urlshortener.util.CacheKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -26,7 +27,7 @@ public class UrlCacheService {
 
     private static final Logger log = LoggerFactory.getLogger(UrlCacheService.class);
 
-    static final String KEY_PREFIX = "url:";
+    static final String KEY_PREFIX = CacheKeys.URL_PREFIX;
     static final Duration TTL = Duration.ofHours(1);
 
     private final StringRedisTemplate redis;
