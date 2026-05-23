@@ -3,6 +3,7 @@ package com.vamshi.urlshortener.auth;
 import com.vamshi.urlshortener.auth.dto.AuthResponse;
 import com.vamshi.urlshortener.auth.dto.LoginRequest;
 import com.vamshi.urlshortener.auth.dto.SignupRequest;
+import com.vamshi.urlshortener.exception.Exceptions.EmailAlreadyInUseException;
 import com.vamshi.urlshortener.security.JwtService;
 import com.vamshi.urlshortener.security.SecurityConstants;
 import com.vamshi.urlshortener.user.User;
@@ -28,7 +29,7 @@ public class AuthService {
     public UserResponse signup(SignupRequest request) {
         String email = request.getEmail().toLowerCase().strip();
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already in use");
+            throw new EmailAlreadyInUseException(email);
         }
         User user = User.builder()
                 .email(email)
