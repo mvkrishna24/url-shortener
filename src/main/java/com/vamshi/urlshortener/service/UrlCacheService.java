@@ -1,6 +1,8 @@
 package com.vamshi.urlshortener.service;
 
 import com.vamshi.urlshortener.util.CacheKeys;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -31,9 +33,17 @@ public class UrlCacheService {
     static final Duration TTL = Duration.ofHours(1);
 
     private final StringRedisTemplate redis;
+    private final Counter hitCounter;
+    private final Counter missCounter;
 
-    public UrlCacheService(StringRedisTemplate redis) {
+    public UrlCacheService(StringRedisTemplate redis, MeterRegistry meterRegistry) {
         this.redis = redis;
+        this.hitCounter = Counter.builder("urlshortener.cache.hits")
+                .description("Redis cache hits for short-code lookups")
+                .register(meterRegistry);
+        this.missCounter = Counter.builder("urlshortener.cache.misses")
+                .description("Redis cache misses for short-code lookups")
+                .register(meterRegistry);
     }
 
     /**
@@ -42,9 +52,15 @@ public class UrlCacheService {
     public Optional<String> getLongUrl(String shortCode) {
         try {
             String value = redis.opsForValue().get(KEY_PREFIX + shortCode);
+            if (value != null) {
+                hitCounter.increment();
+            } else {
+                missCounter.increment();
+            }
             return Optional.ofNullable(value);
         } catch (Exception e) {
             log.warn("Redis GET failed for shortCode={} — falling through to DB: {}", shortCode, e.getMessage());
+            missCounter.increment();
             return Optional.empty();
         }
     }
