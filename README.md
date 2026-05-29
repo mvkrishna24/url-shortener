@@ -131,6 +131,8 @@ docker compose up -d postgres redis
 
 ## Environment Variables
 
+Use [.env.example](.env.example) as the safe local template.
+
 Common app configuration:
 
 | Variable | Purpose | Local default |
@@ -146,7 +148,9 @@ Common app configuration:
 | `REDIS_HOST` | Redis host | `localhost` |
 | `REDIS_PORT` | Redis port | `6379` |
 | `REDIS_PASSWORD` | Redis password | empty |
+| `REDIS_URL` | Production Redis connection URL | profile-specific |
 | `JWT_SECRET` | JWT signing secret | dev-only fallback |
+| `JWT_EXPIRATION` | JWT expiration in hours | `1` |
 | `CORS_ALLOWED_ORIGINS` | Allowed browser origins | `http://localhost:3000` |
 
 Production uses `REDIS_URL` in `application-prod.yml` for managed Redis providers such as Upstash.
