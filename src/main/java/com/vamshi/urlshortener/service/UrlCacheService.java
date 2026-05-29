@@ -12,17 +12,17 @@ import java.time.Duration;
 import java.util.Optional;
 
 /**
- * Read-through Redis cache for short-code → long-URL mappings.
+ * Read-through Redis cache for short-code → ResolvedUrl mappings.
  *
- * Key format: {@code url:{shortCode}}  (see docs/cache-keys.md)
- * TTL: 1 hour — balances freshness against cache efficiency for URLs that change
- * infrequently. Explicit invalidation on delete keeps stale reads to zero in the
- * normal case; the TTL is the safety net for missed invalidations.
+ * Value format: "{urlId}|{longUrl}" — both fields needed by the redirect and
+ * analytics paths respectively. The pipe separator is safe because long URLs
+ * are percent-encoded and cannot contain a raw pipe character.
  *
- * Every Redis call is wrapped in a try/catch. If Redis is unavailable, the method
- * logs a warning and returns "empty" (miss) so the caller falls through to PostgreSQL.
- * This is the "graceful degradation" contract: Redis failure degrades performance
- * (higher DB load, higher latency) but never breaks the redirect path.
+ * TTL: 1 hour. Explicit invalidation on delete keeps stale reads to zero in
+ * the normal case; the TTL is the safety net for missed invalidations.
+ *
+ * Every Redis call is wrapped in a try/catch. Redis failure degrades
+ * performance (higher DB load) but never breaks the redirect path.
  */
 @Service
 public class UrlCacheService {
@@ -47,17 +47,19 @@ public class UrlCacheService {
     }
 
     /**
-     * Returns the cached long URL for {@code shortCode}, or empty on cache miss or error.
+     * Returns the cached ResolvedUrl for {@code shortCode}, or empty on miss or error.
+     * Existing single-field entries written by older code are treated as a miss and
+     * evicted lazily via TTL.
      */
-    public Optional<String> getLongUrl(String shortCode) {
+    public Optional<ResolvedUrl> get(String shortCode) {
         try {
             String value = redis.opsForValue().get(KEY_PREFIX + shortCode);
-            if (value != null) {
+            if (value != null && value.contains(String.valueOf(ResolvedUrl.SEPARATOR))) {
                 hitCounter.increment();
-            } else {
-                missCounter.increment();
+                return Optional.of(ResolvedUrl.deserialize(value));
             }
-            return Optional.ofNullable(value);
+            missCounter.increment();
+            return Optional.empty();
         } catch (Exception e) {
             log.warn("Redis GET failed for shortCode={} — falling through to DB: {}", shortCode, e.getMessage());
             missCounter.increment();
@@ -66,12 +68,12 @@ public class UrlCacheService {
     }
 
     /**
-     * Writes {@code longUrl} into the cache with a 1-hour TTL.
-     * Silently swallows errors so a Redis failure never breaks a successful DB lookup.
+     * Writes the resolved URL into the cache with a 1-hour TTL.
+     * Silently swallows errors so a Redis failure never breaks a DB lookup.
      */
-    public void cacheLongUrl(String shortCode, String longUrl) {
+    public void put(String shortCode, ResolvedUrl resolved) {
         try {
-            redis.opsForValue().set(KEY_PREFIX + shortCode, longUrl, TTL);
+            redis.opsForValue().set(KEY_PREFIX + shortCode, resolved.serialize(), TTL);
         } catch (Exception e) {
             log.warn("Redis SET failed for shortCode={}: {}", shortCode, e.getMessage());
         }

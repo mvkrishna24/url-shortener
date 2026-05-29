@@ -8,6 +8,7 @@ import com.vamshi.urlshortener.exception.Exceptions.CustomAliasConflictException
 import com.vamshi.urlshortener.exception.Exceptions.InvalidUrlException;
 import com.vamshi.urlshortener.exception.Exceptions.ShortCodeExpiredException;
 import com.vamshi.urlshortener.exception.Exceptions.ShortCodeNotFoundException;
+import com.vamshi.urlshortener.service.ResolvedUrl;
 import com.vamshi.urlshortener.repository.UrlRepository;
 import com.vamshi.urlshortener.repository.UserRepository;
 import com.vamshi.urlshortener.util.Base62Encoder;
@@ -138,9 +139,11 @@ class UrlServiceTest {
 
     @Test
     void resolveShortCode_cacheHit_skipsDatabase() {
-        when(urlCacheService.getLongUrl("abc")).thenReturn(Optional.of("https://example.com"));
+        when(urlCacheService.get("abc")).thenReturn(Optional.of(new ResolvedUrl(1L, "https://example.com")));
 
-        assertThat(urlService.resolveShortCode("abc")).isEqualTo("https://example.com");
+        ResolvedUrl result = urlService.resolveShortCode("abc");
+        assertThat(result.longUrl()).isEqualTo("https://example.com");
+        assertThat(result.urlId()).isEqualTo(1L);
         verifyNoInteractions(urlRepository);
     }
 
@@ -148,18 +151,20 @@ class UrlServiceTest {
 
     @Test
     void resolveShortCode_cacheMiss_queriesDatabaseAndPopulatesCache() {
-        when(urlCacheService.getLongUrl("abc")).thenReturn(Optional.empty());
+        when(urlCacheService.get("abc")).thenReturn(Optional.empty());
         Url url = Url.builder().id(1L).shortCode("abc").longUrl("https://example.com").build();
         when(urlRepository.findByShortCode("abc")).thenReturn(Optional.of(url));
 
-        assertThat(urlService.resolveShortCode("abc")).isEqualTo("https://example.com");
+        ResolvedUrl result = urlService.resolveShortCode("abc");
+        assertThat(result.longUrl()).isEqualTo("https://example.com");
+        assertThat(result.urlId()).isEqualTo(1L);
 
-        verify(urlCacheService).cacheLongUrl("abc", "https://example.com");
+        verify(urlCacheService).put("abc", new ResolvedUrl(1L, "https://example.com"));
     }
 
     @Test
     void resolveShortCode_notFound_throws() {
-        when(urlCacheService.getLongUrl("xyz")).thenReturn(Optional.empty());
+        when(urlCacheService.get("xyz")).thenReturn(Optional.empty());
         when(urlRepository.findByShortCode("xyz")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> urlService.resolveShortCode("xyz"))
@@ -168,7 +173,7 @@ class UrlServiceTest {
 
     @Test
     void resolveShortCode_expired_throws() {
-        when(urlCacheService.getLongUrl("old")).thenReturn(Optional.empty());
+        when(urlCacheService.get("old")).thenReturn(Optional.empty());
         Url url = Url.builder()
                 .id(1L).shortCode("old").longUrl("https://example.com")
                 .expiresAt(OffsetDateTime.now().minusMinutes(1))
@@ -181,13 +186,13 @@ class UrlServiceTest {
 
     @Test
     void resolveShortCode_notYetExpired_returnsLongUrl() {
-        when(urlCacheService.getLongUrl("ok")).thenReturn(Optional.empty());
+        when(urlCacheService.get("ok")).thenReturn(Optional.empty());
         Url url = Url.builder()
                 .id(1L).shortCode("ok").longUrl("https://example.com")
                 .expiresAt(OffsetDateTime.now().plusHours(1))
                 .build();
         when(urlRepository.findByShortCode("ok")).thenReturn(Optional.of(url));
 
-        assertThat(urlService.resolveShortCode("ok")).isEqualTo("https://example.com");
+        assertThat(urlService.resolveShortCode("ok").longUrl()).isEqualTo("https://example.com");
     }
 }

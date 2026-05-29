@@ -95,8 +95,8 @@ public class UrlService {
     }
 
     @Transactional(readOnly = true)
-    public String resolveShortCode(String shortCode) {
-        Optional<String> cached = urlCacheService.getLongUrl(shortCode);
+    public ResolvedUrl resolveShortCode(String shortCode) {
+        Optional<ResolvedUrl> cached = urlCacheService.get(shortCode);
         if (cached.isPresent()) {
             log.debug("Cache HIT: /{}", shortCode);
             return cached.get();
@@ -109,11 +109,10 @@ public class UrlService {
             throw new ShortCodeExpiredException("Short code has expired: " + shortCode);
         }
 
-        // Populate cache on first DB read (read-through pattern).
-        // If Redis is down cacheLongUrl silently swallows the error.
-        urlCacheService.cacheLongUrl(shortCode, url.getLongUrl());
+        ResolvedUrl resolved = new ResolvedUrl(url.getId(), url.getLongUrl());
+        urlCacheService.put(shortCode, resolved);
         log.info("Cache MISS → DB: /{} -> {}", shortCode, url.getLongUrl());
-        return url.getLongUrl();
+        return resolved;
     }
 
     private UrlResponse toResponse(Url url) {

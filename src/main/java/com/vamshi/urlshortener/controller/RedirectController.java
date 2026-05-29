@@ -1,6 +1,7 @@
 package com.vamshi.urlshortener.controller;
 
 import com.vamshi.urlshortener.exception.Exceptions.*;
+import com.vamshi.urlshortener.service.ResolvedUrl;
 import com.vamshi.urlshortener.service.UrlService;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
@@ -23,8 +24,8 @@ public class RedirectController {
     @GetMapping("/{shortCode}")
     public ResponseEntity<?> redirect(@PathVariable String shortCode) {
         try (MDC.MDCCloseable ignored = MDC.putCloseable("requestId", UUID.randomUUID().toString())) {
-            String longUrl = urlService.resolveShortCode(shortCode);
-            return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(longUrl)).build();
+            ResolvedUrl resolved = urlService.resolveShortCode(shortCode);
+            return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(resolved.longUrl())).build();
         } catch (ShortCodeNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(MediaType.TEXT_HTML)
                     .body("<html><body><h1>404 Not Found</h1><p>The link you are looking for does not exist.</p></body></html>");
