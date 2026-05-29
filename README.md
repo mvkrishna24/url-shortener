@@ -54,3 +54,5 @@ Instead of building a simple CRUD app, this project focuses heavily on backend s
 
 ## System Design Deep Dive
 I treated this project as a high-concurrency performance tuning exercise. Feel free to explore the `/docs` folder for architecture diagrams, caching strategies, and mathematical rationales for the architectural choices.
+
+Performance validation workflow: [docs/performance.md](docs/performance.md)
