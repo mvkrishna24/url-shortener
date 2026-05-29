@@ -1,5 +1,6 @@
 # ===== MAVEN =====
 target/
+*.class
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -34,6 +35,11 @@ out/
 # ===== VS CODE =====
 .vscode/
 
+# ===== LOCAL ASSISTANT / TOOLING =====
+.claude/
+.codex/
+CLAUDE.md
+
 # ===== ENVIRONMENT & SECRETS =====
 .env
 .env.local
@@ -45,6 +51,17 @@ out/
 application-local.yml
 application-secrets.yml
 
+# ===== PYTHON / LOCAL VIRTUAL ENVS =====
+.venv/
+venv/
+env/
+Lib/
+Scripts/
+__pycache__/
+*.py[cod]
+*$py.class
+pip-wheel-metadata/
+
 # ===== OS =====
 .DS_Store
 Thumbs.db
@@ -55,6 +72,9 @@ Thumbs.db
 logs/
 *.log
 log/
+hs_err_pid*
+replay_pid*
+.attach_pid*
 
 # ===== DOCKER =====
 # Don't ignore docker-compose.yml — that's checked in
@@ -64,4 +84,3 @@ docker-compose.override.yml
 # ===== GEOIP =====
 # MaxMind GeoLite2 database — download separately, never commit (license + 30MB binary)
 GeoLite2-*.mmdb
-.claude/
