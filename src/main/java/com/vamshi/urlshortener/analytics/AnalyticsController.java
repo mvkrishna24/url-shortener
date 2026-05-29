@@ -2,7 +2,7 @@ package com.vamshi.urlshortener.analytics;
 
 import com.vamshi.urlshortener.analytics.dto.AnalyticsResponse;
 import com.vamshi.urlshortener.entity.Url;
-import com.vamshi.urlshortener.url.UrlRepository;
+import com.vamshi.urlshortener.repository.UrlRepository;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
