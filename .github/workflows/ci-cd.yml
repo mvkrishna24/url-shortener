@@ -6,11 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   # ── Test ──────────────────────────────────────────────────────────────────
   test:
     name: Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -38,8 +42,27 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate deployment secrets
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "Missing required GitHub secret: RENDER_DEPLOY_HOOK_URL"
+            exit 1
+          fi
+
+          if [ -z "$APP_BASE_URL" ]; then
+            echo "Missing required GitHub secret: APP_BASE_URL"
+            exit 1
+          fi
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+
       - name: Trigger Render deploy hook
         # Render's deploy hook is a plain HTTP POST. The URL contains a secret
         # token — store it as a GitHub Actions secret named RENDER_DEPLOY_HOOK_URL.
