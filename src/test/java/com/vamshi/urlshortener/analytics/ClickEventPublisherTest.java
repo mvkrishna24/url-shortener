@@ -1,53 +1,62 @@
 package com.vamshi.urlshortener.analytics;
 
 import com.vamshi.urlshortener.analytics.dto.ClickEvent;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
 
 class ClickEventPublisherTest {
 
     private ClickEventPublisher publisher;
-    private MeterRegistry meterRegistry;
-    private Counter droppedCounter;
+    private SimpleMeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
-        meterRegistry = mock(MeterRegistry.class);
-        droppedCounter = mock(Counter.class);
-        when(meterRegistry.counter(anyString())).thenReturn(droppedCounter);
+        meterRegistry = new SimpleMeterRegistry();
         publisher = new ClickEventPublisher(meterRegistry);
     }
 
     @Test
-    void publish_IncrementsQueueSize() {
+    void publish_acceptedEvent_incrementsQueueSize() {
         ClickEvent event = new ClickEvent(1L, OffsetDateTime.now(), "127.0.0.1", "https://google.com", "Mozilla/5.0");
         publisher.publish(event);
 
         assertThat(publisher.getQueueSize()).isEqualTo(1);
-        verify(droppedCounter, never()).increment();
+        assertThat(meterRegistry.counter("urlshortener.clicks.dropped").count()).isZero();
     }
 
     @Test
-    void publish_FullQueue_DropsEventsAndIncrementsMetric() {
-        // Fill the queue to its capacity of 10000
-        for (int i = 0; i < 10000; i++) {
+    void publish_fullQueue_dropsEventAndIncrementsDropCounter() {
+        for (int i = 0; i < ClickEventPublisher.QUEUE_CAPACITY; i++) {
             publisher.publish(new ClickEvent(1L, OffsetDateTime.now(), "127.0.0.1", null, null));
         }
-        assertThat(publisher.getQueueSize()).isEqualTo(10000);
+        assertThat(publisher.getQueueSize()).isEqualTo(ClickEventPublisher.QUEUE_CAPACITY);
 
-        // Publish one more - should be dropped safely
         publisher.publish(new ClickEvent(1L, OffsetDateTime.now(), "127.0.0.1", null, null));
 
-        assertThat(publisher.getQueueSize()).isEqualTo(10000);
-        verify(meterRegistry, times(1)).counter("urlshortener.clicks.dropped");
-        verify(droppedCounter, times(1)).increment();
+        assertThat(publisher.getQueueSize()).isEqualTo(ClickEventPublisher.QUEUE_CAPACITY);
+        assertThat(meterRegistry.counter("urlshortener.clicks.dropped").count()).isEqualTo(1.0);
+    }
+
+    @Test
+    void drain_removesRequestedEventsFromQueue() {
+        publisher.publish(new ClickEvent(1L, OffsetDateTime.now(), "1.1.1.1", null, null));
+        publisher.publish(new ClickEvent(2L, OffsetDateTime.now(), "2.2.2.2", null, null));
+        publisher.publish(new ClickEvent(3L, OffsetDateTime.now(), "3.3.3.3", null, null));
+
+        assertThat(publisher.drain(2)).hasSize(2);
+        assertThat(publisher.getQueueSize()).isEqualTo(1);
+    }
+
+    @Test
+    void publish_doesNotThrow_forNullFields() {
+        ClickEvent event = new ClickEvent(1L, OffsetDateTime.now(), null, null, null);
+        assertThat(publisher.getQueueSize()).isZero();
+        publisher.publish(event);
+        assertThat(publisher.getQueueSize()).isEqualTo(1);
     }
 }
