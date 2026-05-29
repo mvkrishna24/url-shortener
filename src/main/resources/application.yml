@@ -113,16 +113,16 @@ app:
     # Rejection metric: urlshortener_ratelimit_rejected_total (Prometheus)
   jwt:
     secret: ${JWT_SECRET:this-is-a-dev-only-secret-change-in-prod-must-be-32-chars-min}
-    expiry-hours: 1
+    expiry-hours: ${JWT_EXPIRATION:1}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   analytics:
     consumer:
       # Max events drained per scheduler tick (every interval-ms). Keeps DB batches bounded.
-      batch-size: 500
+      batch-size: ${ANALYTICS_BATCH_SIZE:500}
       # Scheduler fires every 1000ms. Low-traffic: prevents stale dashboards. High-traffic: bounded batch size handles spikes.
-      interval-ms: 1000
+      interval-ms: ${ANALYTICS_INTERVAL_MS:1000}
     queue:
       # Bounded in-memory queue capacity. Events are dropped (not back-pressured) when full.
-      capacity: 10000
-    slow-query-threshold-ms: 500
+      capacity: ${ANALYTICS_QUEUE_CAPACITY:10000}
+    slow-query-threshold-ms: ${ANALYTICS_SLOW_QUERY_THRESHOLD_MS:500}

@@ -5,7 +5,7 @@
 #   1. Push this repo to GitHub.
 #   2. In Render dashboard → "New Blueprint" → connect your repo.
 #   3. Render provisions the PostgreSQL database and web service automatically.
-#   4. Set REDIS_URL and JWT_SECRET manually (see DEPLOYMENT.md).
+#   4. Set REDIS_URL and APP_BASE_URL manually (see DEPLOYMENT.md).
 
 services:
   - type: web
@@ -64,6 +64,10 @@ services:
       # Render generates a cryptographically random 64-char value automatically.
       - key: JWT_SECRET
         generateValue: true
+
+      # JWT expiration is measured in hours by app.jwt.expiry-hours.
+      - key: JWT_EXPIRATION
+        value: "1"
 
 databases:
   - name: url-shortener-db
