@@ -64,3 +64,4 @@ docker-compose.override.yml
 # ===== GEOIP =====
 # MaxMind GeoLite2 database — download separately, never commit (license + 30MB binary)
 GeoLite2-*.mmdb
+.claude/
