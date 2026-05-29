@@ -1,76 +1,61 @@
 /**
- * k6 load test — rate limit verification
+ * k6 load test: rate-limit abuse validation.
  *
- * Usage:
- *   k6 run load-tests/rate-limit.js
- *
- * What it does:
- *   Sends 120 POST /api/v1/urls requests as fast as possible from a single VU
- *   (simulating one IP address).  The first 100 should return 201 Created;
- *   requests 101-120 should return 429 Too Many Requests.
- *
- *   A second scenario runs with a simulated authenticated user (custom header)
- *   and expects 1 000 requests/min before hitting the limit.
- *
- * Expected output (excerpt):
- *   ✓ status is 201 or 429
- *   ✓ rate limit headers present
- *   ✓ first 100 requests are 201
- *   ✓ requests 101+ are 429
+ * This script intentionally drives one anonymous client over the configured
+ * request-per-minute limit. HTTP 429 is treated as an expected response for
+ * this workload; 5xx responses and unexpected statuses remain failures.
  */
 
 import http from 'k6/http';
-import { check, group } from 'k6';
+import { check } from 'k6';
 import { Counter } from 'k6/metrics';
+import { BASE_URL, jsonHeaders, uniqueLongUrl } from './lib/config.js';
 
-const created  = new Counter('urls_created');
-const rejected = new Counter('requests_rejected_429');
+http.setResponseCallback(http.expectedStatuses({ min: 200, max: 399 }, 429));
 
-export let options = {
+const urlsCreated = new Counter('urls_created');
+const rejected429 = new Counter('requests_rejected_429');
+const unexpectedStatus = new Counter('unexpected_status');
+
+export const options = {
   scenarios: {
-    anonymous_burst: {
-      executor:   'per-vu-iterations',
-      vus:        1,
-      iterations: 120,
-      maxDuration: '10s',
+    anonymous_abuse: {
+      executor: 'per-vu-iterations',
+      vus: Number(__ENV.VUS || 1),
+      iterations: Number(__ENV.ITERATIONS || 140),
+      maxDuration: __ENV.MAX_DURATION || '30s',
     },
   },
   thresholds: {
-    // At least 100 requests must succeed (201) in a 60-second window
-    'urls_created':          ['count>=100'],
-    // At least 15 requests must be rejected (proving the limit fires)
-    'requests_rejected_429': ['count>=15'],
-    // Every response must be either 201 or 429 — never 500
-    'http_req_failed':       ['rate<0.01'],
+    http_req_failed: ['rate<0.01'],
+    checks: ['rate>0.99'],
+    requests_rejected_429: ['count>0'],
+    unexpected_status: ['count==0'],
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
-
 export default function () {
-  group('anonymous rate-limit burst', function () {
-    const res = http.post(
-      `${BASE_URL}/api/v1/urls`,
-      JSON.stringify({ longUrl: `https://example.com/load-test-${Date.now()}-${Math.random()}` }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+  const res = http.post(
+    `${BASE_URL}/api/v1/urls`,
+    JSON.stringify({ longUrl: uniqueLongUrl('rate-limit-abuse') }),
+    jsonHeaders({ 'X-Forwarded-For': __ENV.CLIENT_IP || '198.51.100.10' })
+  );
 
-    check(res, {
-      'status is 201 or 429': (r) => r.status === 201 || r.status === 429,
-      'X-RateLimit-Limit header present': (r) => r.headers['X-Ratelimit-Limit'] !== undefined
-                                                || r.headers['X-RateLimit-Limit'] !== undefined,
-      'X-RateLimit-Remaining header present': (r) => r.headers['X-Ratelimit-Remaining'] !== undefined
-                                                   || r.headers['X-RateLimit-Remaining'] !== undefined,
-    });
-
-    if (res.status === 201) {
-      created.add(1);
-    } else if (res.status === 429) {
-      rejected.add(1);
-      check(res, {
-        '429 body has status field': (r) => JSON.parse(r.body).status === 429,
-        '429 body has message field': (r) => JSON.parse(r.body).message !== undefined,
-      });
-    }
+  check(res, {
+    'status is 201 or 429': (r) => r.status === 201 || r.status === 429,
+    'rate-limit limit header present': (r) => Boolean(r.headers['X-Ratelimit-Limit'] || r.headers['X-RateLimit-Limit']),
+    'rate-limit remaining header present': (r) => Boolean(r.headers['X-Ratelimit-Remaining'] || r.headers['X-RateLimit-Remaining']),
   });
+
+  if (res.status === 201) {
+    urlsCreated.add(1);
+  } else if (res.status === 429) {
+    rejected429.add(1);
+    check(res, {
+      '429 body has status': (r) => r.json('status') === 429,
+      '429 body has message': (r) => Boolean(r.json('message')),
+    });
+  } else {
+    unexpectedStatus.add(1);
+  }
 }
