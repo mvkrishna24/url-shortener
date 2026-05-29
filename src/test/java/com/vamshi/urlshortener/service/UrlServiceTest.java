@@ -11,7 +11,6 @@ import com.vamshi.urlshortener.exception.Exceptions.ShortCodeNotFoundException;
 import com.vamshi.urlshortener.repository.UrlRepository;
 import com.vamshi.urlshortener.repository.UserRepository;
 import com.vamshi.urlshortener.util.Base62Encoder;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,7 +42,7 @@ class UrlServiceTest {
     void setUp() {
         urlService = new UrlService(
                 urlRepository, userRepository, idGeneratorService, urlCacheService,
-                BASE_URL, new SimpleMeterRegistry());
+                BASE_URL);
     }
 
     // --- shortenUrl: happy path ---

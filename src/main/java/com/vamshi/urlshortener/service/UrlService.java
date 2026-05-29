@@ -8,8 +8,6 @@ import com.vamshi.urlshortener.exception.Exceptions.*;
 import com.vamshi.urlshortener.repository.UrlRepository;
 import com.vamshi.urlshortener.repository.UserRepository;
 import com.vamshi.urlshortener.util.Base62Encoder;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,26 +38,17 @@ public class UrlService {
     private final IdGeneratorService idGeneratorService;
     private final UrlCacheService urlCacheService;
     private final String baseUrl;
-    private final Counter cacheHits;
-    private final Counter cacheMisses;
 
     public UrlService(UrlRepository urlRepository,
                       UserRepository userRepository,
                       IdGeneratorService idGeneratorService,
                       UrlCacheService urlCacheService,
-                      @Value("${app.base-url}") String baseUrl,
-                      MeterRegistry meterRegistry) {
+                      @Value("${app.base-url}") String baseUrl) {
         this.urlRepository = urlRepository;
         this.userRepository = userRepository;
         this.idGeneratorService = idGeneratorService;
         this.urlCacheService = urlCacheService;
         this.baseUrl = baseUrl;
-        this.cacheHits = Counter.builder("urlshortener.cache.hits")
-                .description("Redirect requests served from Redis cache")
-                .register(meterRegistry);
-        this.cacheMisses = Counter.builder("urlshortener.cache.misses")
-                .description("Redirect requests that required a PostgreSQL lookup")
-                .register(meterRegistry);
     }
 
     @Transactional
@@ -109,12 +98,10 @@ public class UrlService {
     public String resolveShortCode(String shortCode) {
         Optional<String> cached = urlCacheService.getLongUrl(shortCode);
         if (cached.isPresent()) {
-            cacheHits.increment();
             log.debug("Cache HIT: /{}", shortCode);
             return cached.get();
         }
 
-        cacheMisses.increment();
         Url url = urlRepository.findByShortCode(shortCode)
                 .orElseThrow(() -> new ShortCodeNotFoundException("Short code not found: " + shortCode));
 
