@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -41,7 +42,17 @@ public class SecurityConfig {
             .headers(headers -> headers.addHeaderWriter(new CacheControlHeadersWriter()))
             .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**", "/{shortCode}", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/urls").permitAll()
+                .requestMatchers(HttpMethod.GET, "/{shortCode}").permitAll()
+                .requestMatchers(
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/api-docs/**",
+                        "/v3/api-docs/**",
+                        "/actuator/health",
+                        "/actuator/info"
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

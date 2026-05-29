@@ -3,8 +3,10 @@ package com.vamshi.urlshortener.service;
 import com.vamshi.urlshortener.dto.CreateUrlRequest;
 import com.vamshi.urlshortener.dto.UrlResponse;
 import com.vamshi.urlshortener.entity.Url;
+import com.vamshi.urlshortener.entity.User;
 import com.vamshi.urlshortener.exception.Exceptions.*;
 import com.vamshi.urlshortener.repository.UrlRepository;
+import com.vamshi.urlshortener.repository.UserRepository;
 import com.vamshi.urlshortener.util.Base62Encoder;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -12,6 +14,7 @@ import org.apache.commons.validator.routines.UrlValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,7 @@ public class UrlService {
     );
 
     private final UrlRepository urlRepository;
+    private final UserRepository userRepository;
     private final IdGeneratorService idGeneratorService;
     private final UrlCacheService urlCacheService;
     private final String baseUrl;
@@ -40,11 +44,13 @@ public class UrlService {
     private final Counter cacheMisses;
 
     public UrlService(UrlRepository urlRepository,
+                      UserRepository userRepository,
                       IdGeneratorService idGeneratorService,
                       UrlCacheService urlCacheService,
                       @Value("${app.base-url}") String baseUrl,
                       MeterRegistry meterRegistry) {
         this.urlRepository = urlRepository;
+        this.userRepository = userRepository;
         this.idGeneratorService = idGeneratorService;
         this.urlCacheService = urlCacheService;
         this.baseUrl = baseUrl;
@@ -58,6 +64,11 @@ public class UrlService {
 
     @Transactional
     public UrlResponse shortenUrl(CreateUrlRequest request) {
+        return shortenUrl(request, null);
+    }
+
+    @Transactional
+    public UrlResponse shortenUrl(CreateUrlRequest request, Long userId) {
         if (!URL_VALIDATOR.isValid(request.longUrl())) {
             throw new InvalidUrlException("longUrl is not a valid HTTP/HTTPS URL.");
         }
@@ -77,11 +88,14 @@ public class UrlService {
 
         long id = idGeneratorService.nextId();
         String shortCode = isCustom ? request.customAlias() : Base62Encoder.encode(id);
+        User owner = userId == null ? null : userRepository.findById(userId)
+                .orElseThrow(() -> new BadCredentialsException("Authenticated user not found"));
 
         Url url = Url.builder()
                 .id(id)
                 .shortCode(shortCode)
                 .longUrl(request.longUrl())
+                .user(owner)
                 .customAlias(isCustom)
                 .expiresAt(request.expiresAt())
                 .build();

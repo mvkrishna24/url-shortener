@@ -2,6 +2,7 @@ package com.vamshi.urlshortener.user;
 
 import com.vamshi.urlshortener.entity.Url;
 import com.vamshi.urlshortener.repository.UrlRepository;
+import com.vamshi.urlshortener.repository.UserRepository;
 import com.vamshi.urlshortener.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserRepository userRepository;
-    private final UrlRepository urlRepository; // Ensure your UrlRepository handles pagination properly
+    private final UrlRepository urlRepository;
 
     @GetMapping("/auth/me")
     public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal Long userId) {

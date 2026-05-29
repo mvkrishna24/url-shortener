@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -31,9 +32,10 @@ public class UrlController {
         @ApiResponse(responseCode = "409", description = "Custom alias already taken")
     })
     @PostMapping
-    public ResponseEntity<UrlResponse> shortenUrl(@Valid @RequestBody CreateUrlRequest request) {
+    public ResponseEntity<UrlResponse> shortenUrl(@Valid @RequestBody CreateUrlRequest request,
+                                                  @AuthenticationPrincipal Long currentUserId) {
         try (MDC.MDCCloseable ignored = MDC.putCloseable("requestId", UUID.randomUUID().toString())) {
-            return ResponseEntity.status(HttpStatus.CREATED).body(urlService.shortenUrl(request));
+            return ResponseEntity.status(HttpStatus.CREATED).body(urlService.shortenUrl(request, currentUserId));
         }
     }
 }
