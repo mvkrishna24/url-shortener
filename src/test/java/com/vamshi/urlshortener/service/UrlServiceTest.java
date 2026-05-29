@@ -3,11 +3,13 @@ package com.vamshi.urlshortener.service;
 import com.vamshi.urlshortener.dto.CreateUrlRequest;
 import com.vamshi.urlshortener.dto.UrlResponse;
 import com.vamshi.urlshortener.entity.Url;
+import com.vamshi.urlshortener.entity.User;
 import com.vamshi.urlshortener.exception.Exceptions.CustomAliasConflictException;
 import com.vamshi.urlshortener.exception.Exceptions.InvalidUrlException;
 import com.vamshi.urlshortener.exception.Exceptions.ShortCodeExpiredException;
 import com.vamshi.urlshortener.exception.Exceptions.ShortCodeNotFoundException;
 import com.vamshi.urlshortener.repository.UrlRepository;
+import com.vamshi.urlshortener.repository.UserRepository;
 import com.vamshi.urlshortener.util.Base62Encoder;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +33,7 @@ class UrlServiceTest {
     private static final long STUB_ID = 12345L;
 
     @Mock private UrlRepository urlRepository;
+    @Mock private UserRepository userRepository;
     @Mock private IdGeneratorService idGeneratorService;
     @Mock private UrlCacheService urlCacheService;
 
@@ -39,7 +42,7 @@ class UrlServiceTest {
     @BeforeEach
     void setUp() {
         urlService = new UrlService(
-                urlRepository, idGeneratorService, urlCacheService,
+                urlRepository, userRepository, idGeneratorService, urlCacheService,
                 BASE_URL, new SimpleMeterRegistry());
     }
 
@@ -80,6 +83,18 @@ class UrlServiceTest {
                 new CreateUrlRequest("https://example.com", null, expiry));
 
         assertThat(response.expiresAt()).isEqualTo(expiry);
+    }
+
+    @Test
+    void shortenUrl_authenticatedUser_setsOwner() {
+        User owner = User.builder().id(42L).email("owner@example.com").build();
+        when(userRepository.findById(42L)).thenReturn(Optional.of(owner));
+        when(idGeneratorService.nextId()).thenReturn(STUB_ID);
+        when(urlRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        urlService.shortenUrl(new CreateUrlRequest("https://example.com", null, null), 42L);
+
+        verify(urlRepository).save(argThat(url -> url.getUser() != null && url.getUser().getId().equals(42L)));
     }
 
     // --- shortenUrl: validation failures ---
