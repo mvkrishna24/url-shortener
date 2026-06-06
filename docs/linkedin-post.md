@@ -1,35 +1,41 @@
 # LinkedIn Post Draft
 
+I recently finished building a distributed URL shortener, treating it as a
+system-design project rather than a simple CRUD app.
 
+A one-minute local k6 benchmark validated **100.26 warm-cache redirects/sec at
+4.13ms p99 latency with zero errors**. The benchmark also recorded **6,019 Redis
+cache hits and one miss**.
 
-🚀 I recently finished building a Distributed URL Shortener, but I wanted to treat it strictly as a system design challenge rather than a simple CRUD app. 
+Three trade-offs shaped the design:
 
-The goal was to mimic the SLAs of platforms like Bitly—handling 800+ RPS with sub-20ms p99 redirect latency. Getting there forced me to navigate several interesting architectural trade-offs:
+**Read-through vs. write-through caching**
 
-⚖️ **Read-Through vs. Write-Through Caching**
-Most URL shorteners have a massive "long tail"—millions of links are generated, but only a fraction are ever clicked. Instead of pre-warming the cache on creation (Write-Through) and wasting expensive Redis memory, I implemented a Read-Through strategy with a 1-hour TTL. This inherently prioritizes "hot" keys, achieving an 89% cache hit rate under load while preventing memory bloat.
+Instead of pre-warming Redis for every created link, the application caches a
+URL on its first redirect and keeps it for one hour. This focuses cache memory on
+requested links while PostgreSQL remains the source of truth. If Redis fails,
+redirects gracefully fall back to PostgreSQL.
 
-⚖️ **UUIDs vs. Batch-Allocated Counters**
-UUIDs prevent collisions but result in long 22-character Base62 strings. Standard database auto-increments create a severe write bottleneck. The middle ground? A centralized sequence generator in PostgreSQL that allocates blocks of 10,000 IDs to the application. The Spring Boot instances dispense these locally via lock-free `AtomicLong`s, entirely removing the DB from the critical write path.
+**UUIDs vs. batch-allocated counters**
 
-⚖️ **Analytics Accuracy vs. Redirect Latency**
-Tracking geolocation and device types synchronously would completely destroy the 20ms redirect SLA. I decoupled the analytics pipeline using a bounded in-memory queue. A background worker drains the events, enriches the data via MaxMind GeoIP, and executes pure JDBC batch inserts (yielding a ~50x throughput gain over standard Hibernate). The trade-off? If the node crashes, we might lose a few seconds of telemetry. But dropping an analytics metric is always better than dropping a user redirect.
+UUIDs avoid coordination but create longer short codes. This service reserves
+blocks of 1,000 IDs from a PostgreSQL sequence, dispenses them through an
+`AtomicLong`, and encodes them into Base62. The trade-off is harmless ID gaps
+after a process crash.
 
-Every endpoint is also protected by an atomic, sliding-window rate limiter powered by a custom Redis Lua script to prevent TOCTOU race conditions.
+**Analytics accuracy vs. redirect latency**
 
-🛠️ **Tech Stack:** Java 17, Spring Boot 3, PostgreSQL, Redis, Docker, and Testcontainers (for 100% parity integration testing).
+Redirects publish click events to a bounded in-memory queue and return the 302
+without waiting for enrichment. A scheduled worker later performs optional
+MaxMind GeoIP and user-agent parsing and writes JDBC batches of up to 500 rows.
+The trade-off is that queued telemetry can be lost if an instance crashes.
 
-I’ve heavily documented the architecture, including sequence diagrams and the math behind the rate limiter, in the repository. If you're into backend system design, I'd love to hear your thoughts on these choices!
+The API also includes JWT authentication, an atomic Redis Lua sliding-window
+rate limiter, Flyway migrations, Micrometer/Prometheus metrics, Docker Compose,
+and Testcontainers integration coverage.
 
-🐙 GitHub: [Link to your GitHub repo]
-🌐 Live Demo: [Link to your live demo]
+Tech stack: Java 17, Spring Boot 3, PostgreSQL 16, Redis 7, Docker, and k6.
 
-#SystemDesign #BackendEngineering #Java #SpringBoot #Redis #SoftwareEngineering #PostgreSQL
+GitHub: https://github.com/mvkrishna24/url-shortener
 
----
-
-### Why this post works:
-1. **The Hook:** It immediately signals that this isn't a beginner "to-do list" app.
-2. **The Emojis & Spacing:** It's highly scannable for recruiters who are quickly scrolling.
-3. **The Trade-offs:** It proves you think like a Senior Engineer. Juniors focus on *frameworks*; Seniors focus on *trade-offs*.
-4. **The Metrics:** Uses your actual load-testing numbers (800 RPS, sub-20ms latency, 89% hit rate, 50x throughput gain).
+#SystemDesign #BackendEngineering #Java #SpringBoot #Redis #PostgreSQL

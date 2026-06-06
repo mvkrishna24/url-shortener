@@ -1,0 +1,246 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: load-tests/authenticated-shorten.js
+        output: json (load-tests/results/shorten-auth.json)
+
+     scenarios: (100.00%) 1 scenario, 50 max VUs, 1m30s max duration (incl. graceful stop):
+              * authenticated_shorten: 10.00 iterations/s for 1m0s (maxVUs: 10-50, gracefulStop: 30s)
+
+
+running (0m01.0s), 01/10 VUs, 9 complete and 0 interrupted iterations
+authenticated_shorten   [   2% ] 01/10 VUs  0m01.0s/1m0s  10.00 iters/s
+
+running (0m02.0s), 01/10 VUs, 19 complete and 0 interrupted iterations
+authenticated_shorten   [   3% ] 01/10 VUs  0m02.0s/1m0s  10.00 iters/s
+
+running (0m03.0s), 01/10 VUs, 29 complete and 0 interrupted iterations
+authenticated_shorten   [   5% ] 01/10 VUs  0m03.0s/1m0s  10.00 iters/s
+
+running (0m04.0s), 01/10 VUs, 39 complete and 0 interrupted iterations
+authenticated_shorten   [   7% ] 01/10 VUs  0m04.0s/1m0s  10.00 iters/s
+
+running (0m05.0s), 01/10 VUs, 49 complete and 0 interrupted iterations
+authenticated_shorten   [   8% ] 01/10 VUs  0m05.0s/1m0s  10.00 iters/s
+
+running (0m06.0s), 01/10 VUs, 59 complete and 0 interrupted iterations
+authenticated_shorten   [  10% ] 01/10 VUs  0m06.0s/1m0s  10.00 iters/s
+
+running (0m07.0s), 01/10 VUs, 69 complete and 0 interrupted iterations
+authenticated_shorten   [  12% ] 01/10 VUs  0m07.0s/1m0s  10.00 iters/s
+
+running (0m08.0s), 01/10 VUs, 79 complete and 0 interrupted iterations
+authenticated_shorten   [  13% ] 01/10 VUs  0m08.0s/1m0s  10.00 iters/s
+
+running (0m09.0s), 01/10 VUs, 89 complete and 0 interrupted iterations
+authenticated_shorten   [  15% ] 01/10 VUs  0m09.0s/1m0s  10.00 iters/s
+
+running (0m10.0s), 01/10 VUs, 99 complete and 0 interrupted iterations
+authenticated_shorten   [  17% ] 01/10 VUs  0m10.0s/1m0s  10.00 iters/s
+
+running (0m11.0s), 01/10 VUs, 109 complete and 0 interrupted iterations
+authenticated_shorten   [  18% ] 01/10 VUs  0m11.0s/1m0s  10.00 iters/s
+
+running (0m12.0s), 01/10 VUs, 119 complete and 0 interrupted iterations
+authenticated_shorten   [  20% ] 01/10 VUs  0m12.0s/1m0s  10.00 iters/s
+
+running (0m13.0s), 01/10 VUs, 129 complete and 0 interrupted iterations
+authenticated_shorten   [  22% ] 01/10 VUs  0m13.0s/1m0s  10.00 iters/s
+
+running (0m14.0s), 01/10 VUs, 139 complete and 0 interrupted iterations
+authenticated_shorten   [  23% ] 01/10 VUs  0m14.0s/1m0s  10.00 iters/s
+
+running (0m15.0s), 01/10 VUs, 149 complete and 0 interrupted iterations
+authenticated_shorten   [  25% ] 01/10 VUs  0m15.0s/1m0s  10.00 iters/s
+
+running (0m16.0s), 01/10 VUs, 159 complete and 0 interrupted iterations
+authenticated_shorten   [  27% ] 01/10 VUs  0m16.0s/1m0s  10.00 iters/s
+
+running (0m17.0s), 01/10 VUs, 169 complete and 0 interrupted iterations
+authenticated_shorten   [  28% ] 01/10 VUs  0m17.0s/1m0s  10.00 iters/s
+
+running (0m18.0s), 01/10 VUs, 179 complete and 0 interrupted iterations
+authenticated_shorten   [  30% ] 01/10 VUs  0m18.0s/1m0s  10.00 iters/s
+
+running (0m19.0s), 01/10 VUs, 189 complete and 0 interrupted iterations
+authenticated_shorten   [  32% ] 01/10 VUs  0m19.0s/1m0s  10.00 iters/s
+
+running (0m20.0s), 01/10 VUs, 199 complete and 0 interrupted iterations
+authenticated_shorten   [  33% ] 01/10 VUs  0m20.0s/1m0s  10.00 iters/s
+
+running (0m21.0s), 01/10 VUs, 209 complete and 0 interrupted iterations
+authenticated_shorten   [  35% ] 01/10 VUs  0m21.0s/1m0s  10.00 iters/s
+
+running (0m22.0s), 01/10 VUs, 219 complete and 0 interrupted iterations
+authenticated_shorten   [  37% ] 01/10 VUs  0m22.0s/1m0s  10.00 iters/s
+
+running (0m23.0s), 01/10 VUs, 229 complete and 0 interrupted iterations
+authenticated_shorten   [  38% ] 01/10 VUs  0m23.0s/1m0s  10.00 iters/s
+
+running (0m24.0s), 01/10 VUs, 239 complete and 0 interrupted iterations
+authenticated_shorten   [  40% ] 01/10 VUs  0m24.0s/1m0s  10.00 iters/s
+
+running (0m25.0s), 01/10 VUs, 249 complete and 0 interrupted iterations
+authenticated_shorten   [  42% ] 01/10 VUs  0m25.0s/1m0s  10.00 iters/s
+
+running (0m26.0s), 01/10 VUs, 259 complete and 0 interrupted iterations
+authenticated_shorten   [  43% ] 01/10 VUs  0m26.0s/1m0s  10.00 iters/s
+
+running (0m27.0s), 01/10 VUs, 269 complete and 0 interrupted iterations
+authenticated_shorten   [  45% ] 01/10 VUs  0m27.0s/1m0s  10.00 iters/s
+
+running (0m28.0s), 01/10 VUs, 279 complete and 0 interrupted iterations
+authenticated_shorten   [  47% ] 01/10 VUs  0m28.0s/1m0s  10.00 iters/s
+
+running (0m29.0s), 01/10 VUs, 289 complete and 0 interrupted iterations
+authenticated_shorten   [  48% ] 01/10 VUs  0m29.0s/1m0s  10.00 iters/s
+
+running (0m30.0s), 01/10 VUs, 299 complete and 0 interrupted iterations
+authenticated_shorten   [  50% ] 01/10 VUs  0m30.0s/1m0s  10.00 iters/s
+
+running (0m31.0s), 01/10 VUs, 309 complete and 0 interrupted iterations
+authenticated_shorten   [  52% ] 01/10 VUs  0m31.0s/1m0s  10.00 iters/s
+
+running (0m32.0s), 01/10 VUs, 319 complete and 0 interrupted iterations
+authenticated_shorten   [  53% ] 01/10 VUs  0m32.0s/1m0s  10.00 iters/s
+
+running (0m33.0s), 01/10 VUs, 329 complete and 0 interrupted iterations
+authenticated_shorten   [  55% ] 01/10 VUs  0m33.0s/1m0s  10.00 iters/s
+
+running (0m34.0s), 01/10 VUs, 339 complete and 0 interrupted iterations
+authenticated_shorten   [  57% ] 01/10 VUs  0m34.0s/1m0s  10.00 iters/s
+
+running (0m35.0s), 01/10 VUs, 349 complete and 0 interrupted iterations
+authenticated_shorten   [  58% ] 01/10 VUs  0m35.0s/1m0s  10.00 iters/s
+
+running (0m36.0s), 01/10 VUs, 359 complete and 0 interrupted iterations
+authenticated_shorten   [  60% ] 01/10 VUs  0m36.0s/1m0s  10.00 iters/s
+
+running (0m37.0s), 01/10 VUs, 369 complete and 0 interrupted iterations
+authenticated_shorten   [  62% ] 01/10 VUs  0m37.0s/1m0s  10.00 iters/s
+
+running (0m38.0s), 01/10 VUs, 379 complete and 0 interrupted iterations
+authenticated_shorten   [  63% ] 01/10 VUs  0m38.0s/1m0s  10.00 iters/s
+
+running (0m39.0s), 01/10 VUs, 389 complete and 0 interrupted iterations
+authenticated_shorten   [  65% ] 01/10 VUs  0m39.0s/1m0s  10.00 iters/s
+
+running (0m40.0s), 01/10 VUs, 399 complete and 0 interrupted iterations
+authenticated_shorten   [  67% ] 01/10 VUs  0m40.0s/1m0s  10.00 iters/s
+
+running (0m41.0s), 01/10 VUs, 409 complete and 0 interrupted iterations
+authenticated_shorten   [  68% ] 01/10 VUs  0m41.0s/1m0s  10.00 iters/s
+
+running (0m42.0s), 01/10 VUs, 419 complete and 0 interrupted iterations
+authenticated_shorten   [  70% ] 01/10 VUs  0m42.0s/1m0s  10.00 iters/s
+
+running (0m43.0s), 01/10 VUs, 429 complete and 0 interrupted iterations
+authenticated_shorten   [  72% ] 01/10 VUs  0m43.0s/1m0s  10.00 iters/s
+
+running (0m44.0s), 01/10 VUs, 439 complete and 0 interrupted iterations
+authenticated_shorten   [  73% ] 01/10 VUs  0m44.0s/1m0s  10.00 iters/s
+
+running (0m45.0s), 01/10 VUs, 449 complete and 0 interrupted iterations
+authenticated_shorten   [  75% ] 01/10 VUs  0m45.0s/1m0s  10.00 iters/s
+
+running (0m46.0s), 01/10 VUs, 459 complete and 0 interrupted iterations
+authenticated_shorten   [  77% ] 01/10 VUs  0m46.0s/1m0s  10.00 iters/s
+
+running (0m47.0s), 01/10 VUs, 469 complete and 0 interrupted iterations
+authenticated_shorten   [  78% ] 01/10 VUs  0m47.0s/1m0s  10.00 iters/s
+
+running (0m48.0s), 01/10 VUs, 479 complete and 0 interrupted iterations
+authenticated_shorten   [  80% ] 01/10 VUs  0m48.0s/1m0s  10.00 iters/s
+
+running (0m49.0s), 01/10 VUs, 489 complete and 0 interrupted iterations
+authenticated_shorten   [  82% ] 01/10 VUs  0m49.0s/1m0s  10.00 iters/s
+
+running (0m50.0s), 01/10 VUs, 499 complete and 0 interrupted iterations
+authenticated_shorten   [  83% ] 01/10 VUs  0m50.0s/1m0s  10.00 iters/s
+
+running (0m51.0s), 01/10 VUs, 509 complete and 0 interrupted iterations
+authenticated_shorten   [  85% ] 01/10 VUs  0m51.0s/1m0s  10.00 iters/s
+
+running (0m52.0s), 01/10 VUs, 519 complete and 0 interrupted iterations
+authenticated_shorten   [  87% ] 01/10 VUs  0m52.0s/1m0s  10.00 iters/s
+
+running (0m53.0s), 01/10 VUs, 529 complete and 0 interrupted iterations
+authenticated_shorten   [  88% ] 01/10 VUs  0m53.0s/1m0s  10.00 iters/s
+
+running (0m54.0s), 01/10 VUs, 539 complete and 0 interrupted iterations
+authenticated_shorten   [  90% ] 01/10 VUs  0m54.0s/1m0s  10.00 iters/s
+
+running (0m55.0s), 01/10 VUs, 549 complete and 0 interrupted iterations
+authenticated_shorten   [  92% ] 01/10 VUs  0m55.0s/1m0s  10.00 iters/s
+
+running (0m56.0s), 01/10 VUs, 559 complete and 0 interrupted iterations
+authenticated_shorten   [  93% ] 01/10 VUs  0m56.0s/1m0s  10.00 iters/s
+
+running (0m57.0s), 01/10 VUs, 569 complete and 0 interrupted iterations
+authenticated_shorten   [  95% ] 01/10 VUs  0m57.0s/1m0s  10.00 iters/s
+
+running (0m58.0s), 01/10 VUs, 579 complete and 0 interrupted iterations
+authenticated_shorten   [  97% ] 01/10 VUs  0m58.0s/1m0s  10.00 iters/s
+
+running (0m59.0s), 01/10 VUs, 589 complete and 0 interrupted iterations
+authenticated_shorten   [  98% ] 01/10 VUs  0m59.0s/1m0s  10.00 iters/s
+
+running (1m00.0s), 01/10 VUs, 599 complete and 0 interrupted iterations
+authenticated_shorten   [ 100% ] 01/10 VUs  1m00.0s/1m0s  10.00 iters/s
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=100.00%
+
+    http_req_duration
+    ✓ 'p(95)<250' p(95)=11.35ms
+    ✓ 'p(99)<500' p(99)=12.38ms
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+    urls_created
+    ✓ 'count>0' count=601
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1202    19.996118/s
+    checks_succeeded...: 100.00% 1202 out of 1202
+    checks_failed......: 0.00%   0 out of 1202
+
+    ✓ created short URL
+    ✓ shortCode returned
+
+    CUSTOM
+    urls_created...................: 601    9.998059/s
+
+    HTTP
+    http_req_duration..............: avg=9.07ms   min=3.7ms   med=9.37ms   max=13.08ms  p(90)=10.86ms  p(95)=11.35ms 
+      { expected_response:true }...: avg=9.07ms   min=3.7ms   med=9.37ms   max=13.08ms  p(90)=10.86ms  p(95)=11.35ms 
+    http_req_failed................: 0.00%  0 out of 601
+    http_reqs......................: 601    9.998059/s
+
+    EXECUTION
+    iteration_duration.............: avg=109.86ms min=104.4ms med=110.16ms max=119.72ms p(90)=111.72ms p(95)=112.24ms
+    iterations.....................: 601    9.998059/s
+    vus............................: 1      min=1        max=1 
+    vus_max........................: 10     min=10       max=10
+
+    NETWORK
+    data_received..................: 426 kB 7.1 kB/s
+    data_sent......................: 286 kB 4.8 kB/s
+
+
+
+
+running (1m00.1s), 00/10 VUs, 601 complete and 0 interrupted iterations
+authenticated_shorten ✓ [ 100% ] 00/10 VUs  1m0s  10.00 iters/s

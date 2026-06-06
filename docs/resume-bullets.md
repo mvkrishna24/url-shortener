@@ -1,31 +1,22 @@
-# Resume Bullets & Achievements
+# Resume Bullets And Achievements
 
-## Tier A: Single Bullet (Highly space-constrained)
-* **Architected a distributed URL shortener (Java/Spring Boot) handling 800+ RPS with sub-20ms p99 latency, utilizing a read-through Redis cache that reduced database load by 9x and an atomic sliding-window rate limiter.**
+## Single Bullet
 
-## Tier B: 4-Bullet Entry (Standard Resume Format)
+- Architected a distributed URL shortener in Java and Spring Boot, validating 100.26 warm-cache redirects/sec at 4.13ms p99 latency with zero k6 errors and a 99.98% Redis hit rate.
+
+## Four-Bullet Entry
+
 **Distributed URL Shortener** | *Java 17, Spring Boot, Redis, PostgreSQL, Docker*
-* **Engineered a high-throughput redirection engine** handling 800+ RPS with sub-20ms p99 latency, leveraging batch-allocated Base62 IDs to eliminate per-request database sequence bottlenecks.
-* **Optimized read performance by 9x** through a distributed read-through Redis cache, achieving an 89% cache hit rate during peak traffic while avoiding memory bloat from cold URLs.
-* **Secured API endpoints** by implementing a lock-free, sliding-window rate limiter using atomic Redis Lua scripts, yielding sub-1ms decision latency and preventing TOCTOU race conditions.
-* **Architected an async analytics pipeline** utilizing an in-memory queue and pure JDBC batch inserts, processing click telemetry and GeoIP lookups 50x faster than standard JPA save operations.
 
-## Tier C: Extended Version (LinkedIn / Cover Letters)
+- Engineered a low-latency redirect path validating 100.26 RPS at 4.13ms p99, backed by read-through Redis caching and graceful PostgreSQL fallback.
+- Reduced benchmark database redirect lookups by 99.98%, recording 6,019 Redis hits and one miss after cache warm-up.
+- Implemented an atomic Redis Lua sliding-window limiter; k6 verified exactly 100 anonymous requests accepted followed by HTTP 429 rejections.
+- Built an async analytics pipeline with a bounded 10K-event queue and JDBC inserts in batches of up to 500, keeping enrichment off the redirect path.
 
-*   **Batch-Allocated Base62 ID Generation:** 
-    To guarantee short, collision-free URLs under high concurrency without bogging down the database, I implemented a batch-allocation strategy. The application fetches a block of IDs from PostgreSQL (e.g., 1000 at a time) and dispenses them from an in-memory `AtomicLong`. This eliminated the DB round-trip on the critical write path and ensured maximum throughput.
+## Technical Talking Points
 
-*   **Multi-Layer Caching Strategy:** 
-    I chose a read-through caching strategy over write-through to optimize memory usage, as most shortened URLs are generated but rarely clicked. Backed by Redis with a 1-hour TTL, this architecture achieved an 89% cache hit rate. It successfully reduced PostgreSQL read load by 9x, keeping the p99 redirect latency strictly under 20ms.
-
-*   **Atomic Sliding-Window Rate Limiting:** 
-    To protect the platform from abuse without introducing significant overhead, I engineered a sliding-window log rate limiter. By pushing the logic into a Redis Lua script, the system evaluates limits in a single, atomic, single-threaded operation using sorted sets (`ZREMRANGEBYSCORE`, `ZCARD`, `ZADD`). This entirely eliminated TOCTOU (time-of-check to time-of-use) race conditions with sub-1ms overhead.
-
-*   **Decoupled Async Analytics Pipeline:** 
-    Tracking user locations and device types on every redirect threatened to break the 20ms SLA. I decoupled this by publishing click events to a bounded in-memory `LinkedBlockingQueue` (fire-and-forget). A background consumer enriches the data via the MaxMind GeoIP database and writes to PostgreSQL. By bypassing Hibernate and using raw JDBC batch inserts, throughput increased by ~50x for telemetry data.
-
-*   **Production-Grade CI/CD & Testing:** 
-    I refused to rely on fragile mock databases that hide dialect-specific bugs. Instead, I integrated Testcontainers to spin up ephemeral PostgreSQL and Redis Docker containers for the integration test suite. This guaranteed absolute parity between the testing environment and production infrastructure.
-
-*   **Resilience & Fail-Open Design:** 
-    Distributed systems fail, so I designed the core redirect logic to degrade gracefully. If the Redis cluster goes offline, the `UrlCacheService` catches the connection exception, logs the event, and transparently falls back to querying PostgreSQL. Rate limiting automatically fails open. The system gets slower, but it stays alive.
+- **Batch-allocated Base62 IDs:** each PostgreSQL sequence call reserves 1,000 IDs, which the app dispenses through an `AtomicLong`. This preserves compact, collision-free codes while reducing sequence calls by up to 1,000x.
+- **Read-through caching:** Redis stores only requested links for one hour. Redis failures degrade to PostgreSQL reads instead of breaking redirects.
+- **Atomic rate limiting:** Redis sorted sets and one Lua script perform cleanup, count, admission, insert, and expiry without a time-of-check to time-of-use race.
+- **Async analytics:** a fire-and-forget publisher protects redirect latency; a scheduled consumer performs optional GeoIP and user-agent enrichment before JDBC batch inserts.
+- **Production-oriented testing:** 39 unit tests pass; 29 Testcontainers integration tests are retained for compatible CI/Linux Docker environments.

@@ -1,6 +1,6 @@
 # Analytics Pipeline Architecture
 
-This document details the async processing pipeline used to track URL clicks without impacting the `< 20ms` redirect latency SLA.
+This document details the async processing pipeline used to track URL clicks without putting enrichment and inserts on the redirect path.
 
 ## Architecture / Sequence
 
@@ -38,7 +38,7 @@ sequenceDiagram
    - **Size (drain 500):** During traffic spikes, we process chunks of 500. This ensures memory stays bounded and DB transactions are perfectly sized for throughput.
 
 3. **Why JDBC Batch `batchUpdate` vs JPA `.saveAll()`?**
-   JPA processes `saveAll()` as individual `INSERT` statements with round-trips unless extremely carefully configured (`hibernate.jdbc.batch_size` + disabling identity generation). By bypassing JPA and using Spring's `JdbcTemplate.batchUpdate()`, we pack 500 rows into a single network packet to PostgreSQL. 500 individual inserts takes ~250ms (0.5ms * 500 round-trips). A batched insert of 500 rows takes ~5-10ms. A 50x performance gain.
+   JPA batching requires careful configuration and entity lifecycle management. By using Spring's `JdbcTemplate.batchUpdate()`, the consumer writes explicit batches of up to 500 rows without hydrating click entities. The current benchmark validates redirect latency, but does not claim a measured JDBC-versus-JPA speedup.
 
 4. **Why In-Memory Queue vs Kafka (for v1)?**
    For a v1 MVP, introducing Kafka adds significant operational complexity (Zookeeper/KRaft, schema registries, extra containers). A `LinkedBlockingQueue` keeps the architecture strictly monolithic and simple to deploy.

@@ -1,165 +1,94 @@
-# Performance Validation
+# Performance Benchmarks
 
-This document explains how to validate URL shortener performance locally with k6.
-It defines the workflow and target thresholds; it does not record benchmark
-results. Add numbers only after running the tests on a known machine and setup.
+## Test Environment
 
-## Goals
+- Machine: MacBook Air M5 (Apple Silicon, 10-core CPU, 16 GB RAM)
+- Project target: Java 17
+- Benchmark JVM: Homebrew OpenJDK 26.0.1 (Maven runtime)
+- Database: PostgreSQL 16.14 in Docker (single container)
+- Cache: Redis 7.4.9 in Docker (single container)
+- Load generator: k6 v2.0.0
+- Test date: 2026-06-07
+- Git commit: `dc65ac2`
 
-- Redirects should stay fast because they are the hottest path.
-- Warm-cache redirects should meet:
-  - p95 < 50 ms locally
-  - p99 < 100 ms locally
-- Unexpected error rate should stay below 1%.
-- Rate-limit abuse tests should produce HTTP 429 responses.
-- Analytics publishing must never break or materially slow redirects.
+## Results Summary
 
-## Local Setup
+| Scenario | RPS | p50 | p95 | p99 | Error Rate |
+|----------|-----|-----|-----|-----|------------|
+| Anonymous URL shortening | 19.98 | 8.16 ms | 11.46 ms | 12.84 ms | 0.00% |
+| Redirect (warm Redis cache) | 100.26 | 2.65 ms | 3.54 ms | 4.13 ms | 0.00% |
+| Authenticated URL shortening | 10.00 | 9.37 ms | 11.35 ms | 12.39 ms | 0.00% |
+| Rate limiter correctness | N/A | N/A | N/A | N/A | 100.00% checks passed |
 
-Required tools and services:
+These are validated throughput points, not saturation limits. The arrival-rate
+scripts intentionally held traffic at 20 anonymous writes/sec, 100 redirects/sec,
+and 10 authenticated writes/sec for one minute.
 
-- Java 17
-- Maven
-- Docker Desktop
-- k6
-- PostgreSQL and Redis from `docker-compose.yml`
-- Spring Boot app running locally
+## Cache Performance
 
-Start dependencies:
+- Redis cache hit rate during the warm-cache scenario: 99.98%
+- Observed cache counters: 6,019 hits, 1 miss
+- PostgreSQL redirect lookups avoided after warm-up: 6,019 of 6,020
+- Cache TTL: 1 hour
+- Key pattern: `url:{shortCode}`
 
-```bash
-docker compose up -d postgres redis
-```
+## Rate Limiter
 
-Start the app in another terminal:
+- Anonymous limit: 100 req/min per IP
+- Authenticated limit: 1,000 req/min per user
+- Algorithm: sliding-window log via Redis sorted sets and a Lua script
+- Correctness result: requests 1-100 accepted; requests 101-140 rejected with 429
+- k6 checks passed: 500/500
 
-```bash
-mvn spring-boot:run
-```
+## Methodology
 
-Default base URL:
+The application ran with the `dev` profile against the Docker Compose PostgreSQL
+and Redis services. Each throughput scenario used a k6 constant-arrival-rate
+executor for one minute:
 
-```bash
-export BASE_URL=http://localhost:8080
-```
+| Scenario | Configured Arrival Rate | Requests |
+|----------|-------------------------|----------|
+| Anonymous shortening | 20/sec | 1,200 |
+| Warm-cache redirect | 100/sec | 6,021 including setup/warm-up requests |
+| Authenticated shortening | 10/sec | 601 |
+| Anonymous rate-limit abuse | 140 immediate iterations | 100 accepted, 40 rejected |
 
-## Environment Variables
+The warm-cache script creates one URL, performs 20 warm-up redirects, then sends
+6,000 measured redirect iterations. Redirects do not follow the destination.
+Percentiles were calculated from the k6 JSON samples; the console summaries and
+Prometheus snapshot are retained in `load-tests/results/`.
 
-- `BASE_URL`: application base URL. Defaults to `http://localhost:8080`.
-- `AUTH_TOKEN`: JWT for authenticated scenarios.
-- `SHORT_CODE`: existing short code for redirect scenarios.
-- `LONG_URL`: base destination URL used when scripts create test URLs.
+## Bottleneck Analysis
 
-Optional tuning variables used by scripts:
+At the current single-instance setup, the likely bottleneck hierarchy is:
 
-- `RATE`: request arrival rate per second.
-- `DURATION`: scenario duration, for example `1m`.
-- `VUS`: pre-allocated virtual users.
-- `MAX_VUS`: maximum virtual users for arrival-rate scenarios.
-- `ITERATIONS`: total requests for the rate-limit abuse script.
-- `CLIENT_IP`: client IP used by the rate-limit abuse script.
-- `WARMUP_REQUESTS`: cache warm-up redirect count before measured traffic.
+1. PostgreSQL and the 20-connection HikariCP pool on write-heavy workloads.
+2. Application CPU for validation, security filters, and request serialization.
+3. Redis and network round trips on hot redirect and rate-limit paths.
+4. The bounded 10,000-event analytics queue during sustained click bursts.
 
-## Authentication Setup
+This benchmark validates latency at fixed arrival rates; it does not establish
+the saturation points above. A separate step-load or ramping-arrival-rate test
+is required before claiming maximum RPS.
 
-Create a user and capture a token:
+## Scaling Story
 
-```bash
-curl -s -X POST "$BASE_URL/api/v1/auth/signup" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"perf@example.com","password":"password1"}'
+To handle 10x the validated load:
 
-export AUTH_TOKEN=$(curl -s -X POST "$BASE_URL/api/v1/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"perf@example.com","password":"password1"}' | jq -r '.token')
-```
+- Add stateless app instances behind a load balancer.
+- Scale PostgreSQL vertically first, then add read replicas for analytics queries.
+- Move Redis to a managed replicated deployment or Redis Cluster as traffic grows.
+- Replace the in-memory analytics queue with Kafka or another durable broker.
 
-## Create A Reusable Short Code
-
-```bash
-export SHORT_CODE=$(curl -s -X POST "$BASE_URL/api/v1/urls" \
-  -H 'Content-Type: application/json' \
-  -d '{"longUrl":"https://example.com/performance-target"}' | jq -r '.shortCode')
-```
-
-## Test Commands
-
-Anonymous URL shortening:
+## Reproduce
 
 ```bash
-k6 run load-tests/anonymous-shorten.js
-```
-
-Authenticated URL shortening:
-
-```bash
-AUTH_TOKEN="$AUTH_TOKEN" k6 run load-tests/authenticated-shorten.js
-```
-
-Redirect-heavy workload against an existing short code:
-
-```bash
-SHORT_CODE="$SHORT_CODE" k6 run load-tests/redirect-heavy.js
-```
-
-Warm-cache redirect workload:
-
-```bash
-k6 run load-tests/warm-cache-redirect.js
-```
-
-Rate-limit abuse validation:
-
-```bash
+docker compose up -d
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+k6 run --out json=load-tests/results/shorten-anon.json load-tests/anonymous-shorten.js
+k6 run --out json=load-tests/results/redirect-warm.json load-tests/warm-cache-redirect.js
+AUTH_TOKEN="<jwt>" k6 run --out json=load-tests/results/shorten-auth.json load-tests/authenticated-shorten.js
 k6 run load-tests/rate-limit.js
 ```
 
-Analytics side-effect workload:
-
-```bash
-SHORT_CODE="$SHORT_CODE" k6 run load-tests/analytics-side-effect.js
-```
-
-## Why Redis Improves Redirects
-
-Redirects first check Redis for `shortCode -> longUrl`. On a cache hit, the app
-avoids a PostgreSQL lookup and returns the 302 response with less work on the
-critical path. The warm-cache script creates or reuses a short code, performs
-warm-up redirects, and then validates redirect latency after the cache is hot.
-
-## Why Async Analytics Protects Redirect Latency
-
-Redirects publish click events to an in-memory queue and return the 302 response.
-GeoIP lookup, user-agent parsing, and PostgreSQL batch inserts happen later in a
-scheduled consumer. The analytics side-effect script sends redirect traffic with
-headers that exercise analytics enrichment inputs while asserting redirect
-latency and correctness.
-
-## Interpreting k6 Output
-
-Key fields:
-
-- `http_req_duration`: end-to-end request duration observed by k6.
-- `http_req_failed`: requests k6 considered failed. The rate-limit abuse script
-  treats 429 as expected.
-- `checks`: application-level assertions such as status code and headers.
-- Custom counters such as `urls_created` and `requests_rejected_429`.
-
-If thresholds fail, inspect:
-
-- Whether the app is running with the expected profile.
-- Whether PostgreSQL and Redis are healthy.
-- Whether the tested URL was warmed into Redis.
-- Whether local machine CPU or Docker resource limits are saturated.
-- Whether 429s are expected for the scenario being run.
-
-## Recording Results
-
-Do not add benchmark numbers to this repository until the tests have actually
-been run. When recording results, include:
-
-- Date and machine details.
-- Git commit SHA.
-- Java, Maven, Docker, PostgreSQL, Redis, and k6 versions.
-- Exact command and environment variables.
-- p95, p99, throughput, error rate, and relevant custom counters.
+`/actuator/prometheus` currently requires a valid bearer token.

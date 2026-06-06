@@ -1,0 +1,240 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: load-tests/warm-cache-redirect.js
+        output: json (load-tests/results/redirect-warm.json)
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 1m30s max duration (incl. graceful stop):
+              * warm_cache_redirect: 100.00 iterations/s for 1m0s (maxVUs: 20-100, gracefulStop: 30s)
+
+
+running (0m01.0s), 001/020 VUs, 94 complete and 0 interrupted iterations
+warm_cache_redirect   [   2% ] 001/020 VUs  0m00.9s/1m0s  100.00 iters/s
+
+running (0m02.0s), 001/020 VUs, 194 complete and 0 interrupted iterations
+warm_cache_redirect   [   3% ] 001/020 VUs  0m01.9s/1m0s  100.00 iters/s
+
+running (0m03.0s), 001/020 VUs, 294 complete and 0 interrupted iterations
+warm_cache_redirect   [   5% ] 001/020 VUs  0m02.9s/1m0s  100.00 iters/s
+
+running (0m04.0s), 001/020 VUs, 394 complete and 0 interrupted iterations
+warm_cache_redirect   [   7% ] 001/020 VUs  0m03.9s/1m0s  100.00 iters/s
+
+running (0m05.0s), 001/020 VUs, 494 complete and 0 interrupted iterations
+warm_cache_redirect   [   8% ] 001/020 VUs  0m04.9s/1m0s  100.00 iters/s
+
+running (0m06.0s), 001/020 VUs, 594 complete and 0 interrupted iterations
+warm_cache_redirect   [  10% ] 001/020 VUs  0m05.9s/1m0s  100.00 iters/s
+
+running (0m07.0s), 001/020 VUs, 694 complete and 0 interrupted iterations
+warm_cache_redirect   [  12% ] 001/020 VUs  0m06.9s/1m0s  100.00 iters/s
+
+running (0m08.0s), 001/020 VUs, 794 complete and 0 interrupted iterations
+warm_cache_redirect   [  13% ] 001/020 VUs  0m07.9s/1m0s  100.00 iters/s
+
+running (0m09.0s), 001/020 VUs, 894 complete and 0 interrupted iterations
+warm_cache_redirect   [  15% ] 001/020 VUs  0m08.9s/1m0s  100.00 iters/s
+
+running (0m10.0s), 001/020 VUs, 994 complete and 0 interrupted iterations
+warm_cache_redirect   [  17% ] 001/020 VUs  0m09.9s/1m0s  100.00 iters/s
+
+running (0m11.0s), 001/020 VUs, 1094 complete and 0 interrupted iterations
+warm_cache_redirect   [  18% ] 001/020 VUs  0m10.9s/1m0s  100.00 iters/s
+
+running (0m12.0s), 001/020 VUs, 1194 complete and 0 interrupted iterations
+warm_cache_redirect   [  20% ] 001/020 VUs  0m11.9s/1m0s  100.00 iters/s
+
+running (0m13.0s), 001/020 VUs, 1294 complete and 0 interrupted iterations
+warm_cache_redirect   [  22% ] 001/020 VUs  0m12.9s/1m0s  100.00 iters/s
+
+running (0m14.0s), 001/020 VUs, 1394 complete and 0 interrupted iterations
+warm_cache_redirect   [  23% ] 001/020 VUs  0m13.9s/1m0s  100.00 iters/s
+
+running (0m15.0s), 001/020 VUs, 1494 complete and 0 interrupted iterations
+warm_cache_redirect   [  25% ] 001/020 VUs  0m14.9s/1m0s  100.00 iters/s
+
+running (0m16.0s), 001/020 VUs, 1594 complete and 0 interrupted iterations
+warm_cache_redirect   [  27% ] 001/020 VUs  0m15.9s/1m0s  100.00 iters/s
+
+running (0m17.0s), 001/020 VUs, 1694 complete and 0 interrupted iterations
+warm_cache_redirect   [  28% ] 001/020 VUs  0m16.9s/1m0s  100.00 iters/s
+
+running (0m18.0s), 001/020 VUs, 1794 complete and 0 interrupted iterations
+warm_cache_redirect   [  30% ] 001/020 VUs  0m17.9s/1m0s  100.00 iters/s
+
+running (0m19.0s), 001/020 VUs, 1894 complete and 0 interrupted iterations
+warm_cache_redirect   [  32% ] 001/020 VUs  0m18.9s/1m0s  100.00 iters/s
+
+running (0m20.0s), 001/020 VUs, 1994 complete and 0 interrupted iterations
+warm_cache_redirect   [  33% ] 001/020 VUs  0m19.9s/1m0s  100.00 iters/s
+
+running (0m21.0s), 001/020 VUs, 2094 complete and 0 interrupted iterations
+warm_cache_redirect   [  35% ] 001/020 VUs  0m20.9s/1m0s  100.00 iters/s
+
+running (0m22.0s), 001/020 VUs, 2194 complete and 0 interrupted iterations
+warm_cache_redirect   [  37% ] 001/020 VUs  0m21.9s/1m0s  100.00 iters/s
+
+running (0m23.0s), 001/020 VUs, 2294 complete and 0 interrupted iterations
+warm_cache_redirect   [  38% ] 001/020 VUs  0m22.9s/1m0s  100.00 iters/s
+
+running (0m24.0s), 001/020 VUs, 2394 complete and 0 interrupted iterations
+warm_cache_redirect   [  40% ] 001/020 VUs  0m23.9s/1m0s  100.00 iters/s
+
+running (0m25.0s), 001/020 VUs, 2494 complete and 0 interrupted iterations
+warm_cache_redirect   [  42% ] 001/020 VUs  0m24.9s/1m0s  100.00 iters/s
+
+running (0m26.0s), 001/020 VUs, 2594 complete and 0 interrupted iterations
+warm_cache_redirect   [  43% ] 001/020 VUs  0m25.9s/1m0s  100.00 iters/s
+
+running (0m27.0s), 001/020 VUs, 2694 complete and 0 interrupted iterations
+warm_cache_redirect   [  45% ] 001/020 VUs  0m26.9s/1m0s  100.00 iters/s
+
+running (0m28.0s), 001/020 VUs, 2794 complete and 0 interrupted iterations
+warm_cache_redirect   [  47% ] 001/020 VUs  0m27.9s/1m0s  100.00 iters/s
+
+running (0m29.0s), 001/020 VUs, 2894 complete and 0 interrupted iterations
+warm_cache_redirect   [  48% ] 001/020 VUs  0m28.9s/1m0s  100.00 iters/s
+
+running (0m30.0s), 001/020 VUs, 2994 complete and 0 interrupted iterations
+warm_cache_redirect   [  50% ] 001/020 VUs  0m29.9s/1m0s  100.00 iters/s
+
+running (0m31.0s), 001/020 VUs, 3094 complete and 0 interrupted iterations
+warm_cache_redirect   [  52% ] 001/020 VUs  0m30.9s/1m0s  100.00 iters/s
+
+running (0m32.0s), 001/020 VUs, 3194 complete and 0 interrupted iterations
+warm_cache_redirect   [  53% ] 001/020 VUs  0m31.9s/1m0s  100.00 iters/s
+
+running (0m33.0s), 001/020 VUs, 3294 complete and 0 interrupted iterations
+warm_cache_redirect   [  55% ] 001/020 VUs  0m32.9s/1m0s  100.00 iters/s
+
+running (0m34.0s), 001/020 VUs, 3394 complete and 0 interrupted iterations
+warm_cache_redirect   [  57% ] 001/020 VUs  0m33.9s/1m0s  100.00 iters/s
+
+running (0m35.0s), 001/020 VUs, 3494 complete and 0 interrupted iterations
+warm_cache_redirect   [  58% ] 001/020 VUs  0m34.9s/1m0s  100.00 iters/s
+
+running (0m36.0s), 001/020 VUs, 3594 complete and 0 interrupted iterations
+warm_cache_redirect   [  60% ] 001/020 VUs  0m35.9s/1m0s  100.00 iters/s
+
+running (0m37.0s), 001/020 VUs, 3694 complete and 0 interrupted iterations
+warm_cache_redirect   [  62% ] 001/020 VUs  0m36.9s/1m0s  100.00 iters/s
+
+running (0m38.0s), 001/020 VUs, 3794 complete and 0 interrupted iterations
+warm_cache_redirect   [  63% ] 001/020 VUs  0m37.9s/1m0s  100.00 iters/s
+
+running (0m39.0s), 001/020 VUs, 3894 complete and 0 interrupted iterations
+warm_cache_redirect   [  65% ] 001/020 VUs  0m38.9s/1m0s  100.00 iters/s
+
+running (0m40.0s), 001/020 VUs, 3994 complete and 0 interrupted iterations
+warm_cache_redirect   [  67% ] 001/020 VUs  0m39.9s/1m0s  100.00 iters/s
+
+running (0m41.0s), 001/020 VUs, 4094 complete and 0 interrupted iterations
+warm_cache_redirect   [  68% ] 001/020 VUs  0m40.9s/1m0s  100.00 iters/s
+
+running (0m42.0s), 001/020 VUs, 4194 complete and 0 interrupted iterations
+warm_cache_redirect   [  70% ] 001/020 VUs  0m41.9s/1m0s  100.00 iters/s
+
+running (0m43.0s), 001/020 VUs, 4294 complete and 0 interrupted iterations
+warm_cache_redirect   [  72% ] 001/020 VUs  0m42.9s/1m0s  100.00 iters/s
+
+running (0m44.0s), 001/020 VUs, 4394 complete and 0 interrupted iterations
+warm_cache_redirect   [  73% ] 001/020 VUs  0m43.9s/1m0s  100.00 iters/s
+
+running (0m45.0s), 001/020 VUs, 4494 complete and 0 interrupted iterations
+warm_cache_redirect   [  75% ] 001/020 VUs  0m44.9s/1m0s  100.00 iters/s
+
+running (0m46.0s), 001/020 VUs, 4594 complete and 0 interrupted iterations
+warm_cache_redirect   [  77% ] 001/020 VUs  0m45.9s/1m0s  100.00 iters/s
+
+running (0m47.0s), 001/020 VUs, 4694 complete and 0 interrupted iterations
+warm_cache_redirect   [  78% ] 001/020 VUs  0m46.9s/1m0s  100.00 iters/s
+
+running (0m48.0s), 001/020 VUs, 4794 complete and 0 interrupted iterations
+warm_cache_redirect   [  80% ] 001/020 VUs  0m47.9s/1m0s  100.00 iters/s
+
+running (0m49.0s), 001/020 VUs, 4894 complete and 0 interrupted iterations
+warm_cache_redirect   [  82% ] 001/020 VUs  0m48.9s/1m0s  100.00 iters/s
+
+running (0m50.0s), 001/020 VUs, 4994 complete and 0 interrupted iterations
+warm_cache_redirect   [  83% ] 001/020 VUs  0m49.9s/1m0s  100.00 iters/s
+
+running (0m51.0s), 001/020 VUs, 5094 complete and 0 interrupted iterations
+warm_cache_redirect   [  85% ] 001/020 VUs  0m50.9s/1m0s  100.00 iters/s
+
+running (0m52.0s), 001/020 VUs, 5194 complete and 0 interrupted iterations
+warm_cache_redirect   [  87% ] 001/020 VUs  0m51.9s/1m0s  100.00 iters/s
+
+running (0m53.0s), 001/020 VUs, 5294 complete and 0 interrupted iterations
+warm_cache_redirect   [  88% ] 001/020 VUs  0m52.9s/1m0s  100.00 iters/s
+
+running (0m54.0s), 001/020 VUs, 5394 complete and 0 interrupted iterations
+warm_cache_redirect   [  90% ] 001/020 VUs  0m53.9s/1m0s  100.00 iters/s
+
+running (0m55.0s), 001/020 VUs, 5494 complete and 0 interrupted iterations
+warm_cache_redirect   [  92% ] 001/020 VUs  0m54.9s/1m0s  100.00 iters/s
+
+running (0m56.0s), 001/020 VUs, 5594 complete and 0 interrupted iterations
+warm_cache_redirect   [  93% ] 001/020 VUs  0m55.9s/1m0s  100.00 iters/s
+
+running (0m57.0s), 001/020 VUs, 5694 complete and 0 interrupted iterations
+warm_cache_redirect   [  95% ] 001/020 VUs  0m56.9s/1m0s  100.00 iters/s
+
+running (0m58.0s), 001/020 VUs, 5794 complete and 0 interrupted iterations
+warm_cache_redirect   [  97% ] 001/020 VUs  0m57.9s/1m0s  100.00 iters/s
+
+running (0m59.0s), 001/020 VUs, 5894 complete and 0 interrupted iterations
+warm_cache_redirect   [  98% ] 001/020 VUs  0m58.9s/1m0s  100.00 iters/s
+
+running (1m00.0s), 001/020 VUs, 5994 complete and 0 interrupted iterations
+warm_cache_redirect   [ 100% ] 001/020 VUs  0m59.9s/1m0s  100.00 iters/s
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=100.00%
+
+    http_req_duration
+    ✓ 'p(95)<50' p(95)=3.54ms
+    ✓ 'p(99)<100' p(99)=4.13ms
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 12000   199.82145/s
+    checks_succeeded...: 100.00% 12000 out of 12000
+    checks_failed......: 0.00%   0 out of 12000
+
+    ✓ redirect returned 302
+    ✓ Location header present
+
+    HTTP
+    http_req_duration..............: avg=2.49ms  min=768µs  med=2.65ms  max=17.6ms  p(90)=3.33ms  p(95)=3.54ms 
+      { expected_response:true }...: avg=2.49ms  min=768µs  med=2.65ms  max=17.6ms  p(90)=3.33ms  p(95)=3.54ms 
+    http_req_failed................: 0.00%  0 out of 6021
+    http_reqs......................: 6021   100.260412/s
+
+    EXECUTION
+    iteration_duration.............: avg=12.84ms min=10.9ms med=13.03ms max=28.58ms p(90)=13.74ms p(95)=13.98ms
+    iterations.....................: 6000   99.910725/s
+    vus............................: 1      min=1         max=1 
+    vus_max........................: 20     min=20        max=20
+
+    NETWORK
+    data_received..................: 2.7 MB 45 kB/s
+    data_sent......................: 518 kB 8.6 kB/s
+
+
+
+
+running (1m00.1s), 000/020 VUs, 6000 complete and 0 interrupted iterations
+warm_cache_redirect ✓ [ 100% ] 000/020 VUs  1m0s  100.00 iters/s

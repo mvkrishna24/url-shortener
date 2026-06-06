@@ -84,3 +84,5 @@ docker-compose.override.yml
 # ===== GEOIP =====
 # MaxMind GeoLite2 database — download separately, never commit (license + 30MB binary)
 GeoLite2-*.mmdb
+# Raw k6 JSON can be tens of megabytes; retain the concise text summaries.
+load-tests/results/*.json

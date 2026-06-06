@@ -1,257 +1,159 @@
 # Distributed URL Shortener
 
-Production-grade URL shortener built with Java 17, Spring Boot, PostgreSQL, Redis, JWT authentication, Flyway migrations, async click analytics, and k6 load-test scenarios.
+Production-grade URL shortener validating **100+ warm-cache redirects/sec at 4.13 ms p99 latency** on a single local instance.
 
-This project focuses on backend system design: short URL generation, low-latency redirects, cache-aware reads, rate limiting, resilient analytics collection, and deployment-ready operational practices.
+[![Java 17](https://img.shields.io/badge/Java-17-orange)](https://www.oracle.com/java/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)](https://spring.io/projects/spring-boot)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7-red)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-compose-blue)](https://www.docker.com/)
+[![License MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![CI](https://github.com/mvkrishna24/url-shortener/actions/workflows/ci.yml/badge.svg)](https://github.com/mvkrishna24/url-shortener/actions)
 
-## Problem Solved
+Live at: `[your-render-url]` (may take 30s to wake - free tier)
 
-URL shorteners are read-heavy systems. A production design has to make redirects fast while still handling authentication, custom aliases, abuse protection, observability, and analytics.
+## Why I Built This
 
-This project separates the critical redirect path from non-critical work:
+A URL shortener turns long links into compact, shareable redirects while keeping
+the read path fast and reliable. I built this project to internalize scalable ID
+generation, cache design, atomic distributed rate limiting, authentication, and
+asynchronous analytics. Those are the same core problems faced by services such
+as Bitly, which operates at billions of redirects per month.
 
-- Redis serves hot redirects without repeated database reads.
-- PostgreSQL remains the source of truth for URLs, users, and click data.
-- Analytics events are published asynchronously so analytics failures do not break redirects.
-- Redis-backed rate limiting protects API endpoints from abusive clients.
+## Engineering Highlights
 
-## Core Features
+- **1,000-ID Base62 blocks:** PostgreSQL sequence calls reserve 1,000 IDs, then each app instance dispenses them with an `AtomicLong`. This keeps codes shorter than UUIDs and avoids Snowflake's clock/node coordination, with acceptable gaps after crashes.
+- **99.98% warm-cache hit rate:** read-through Redis with a 1-hour TTL served 6,019 of 6,020 benchmark lookups from cache. Redis failures gracefully fall back to PostgreSQL.
+- **Atomic two-tier rate limiting:** one Redis Lua script enforces 100 req/min per anonymous IP and 1,000 req/min per authenticated user. k6 verified exactly 100 accepts followed by 40 HTTP 429 responses.
+- **4.13 ms redirect p99:** fire-and-forget click events enter a bounded `LinkedBlockingQueue(10,000)` while a scheduled consumer enriches and writes batches of up to 500 rows through JDBC.
+- **Stateless JWT auth:** BCrypt strength 12, one-hour JWT expiry, a stateless Spring Security filter chain, and generic login failures that prevent account enumeration.
+- **Single-statement expiry cleanup:** a daily `@Scheduled` JPQL bulk delete runs at 02:00 without hydrating entities and increments `urls.cleanup.deleted`.
+- **Measured observability:** Micrometer exposes cache hits/misses, rate-limit rejections, analytics drops, cleanup counts, and HTTP latency histograms through authenticated `/actuator/prometheus`.
 
-- Create short URLs from long HTTP/HTTPS URLs.
-- Optional custom aliases with uniqueness enforcement.
-- Anonymous URL creation is supported.
-- Authenticated URL creation associates URLs with the current user.
-- JWT signup, login, and current-user endpoints.
-- User dashboard endpoint for a user's own URLs.
-- Redirect endpoint with read-through Redis caching.
-- Sliding-window rate limiter backed by Redis Lua scripting.
-- Async click analytics pipeline with bounded in-memory queue and JDBC batch inserts.
-- Analytics endpoint for URL owners.
-- Flyway-managed PostgreSQL schema.
-- Actuator, Micrometer, Prometheus metrics, and structured logging.
-- Docker Compose for local PostgreSQL and Redis.
-- Render deployment blueprint.
-- k6 load-test scripts for performance validation.
+## Architecture
 
-## System Design Highlights
+```mermaid
+graph TD
+    Client["Client"] -->|"POST /api/v1/urls"| Auth["JWT Filter"]
+    Auth --> RateLimit["Rate Limiter<br/>Redis Lua Script"]
+    RateLimit --> Shorten["URL Service<br/>Base62 + Batch ID"]
+    Shorten --> DB[("PostgreSQL<br/>urls table")]
 
-```text
-Client
-  |
-  | POST /api/v1/urls
-  v
-Spring Boot API -----> PostgreSQL
-  |
-  | GET /{shortCode}
-  v
-Redis cache ----miss----> PostgreSQL
-  |
-  v
-302 redirect
-  |
-  +---- async ClickEvent queue ----> analytics worker ----> clicks table
+    Client -->|"GET /{shortCode}"| Cache{"Redis Cache<br/>read-through"}
+    Cache -->|"HIT 99.98%"| Redirect["302 Redirect"]
+    Cache -->|"MISS"| DB
+    DB --> Cache
+    DB --> Redirect
+
+    Redirect -->|"async, non-blocking"| Queue["LinkedBlockingQueue<br/>cap 10K"]
+    Queue --> Analytics["@Scheduled Consumer<br/>batch JDBC insert"]
+    Analytics --> Clicks[("PostgreSQL<br/>clicks table")]
+
+    style Cache fill:#ff6b6b
+    style DB fill:#4ecdc4
+    style Queue fill:#95e1d3
 ```
-
-- Base62 encoding keeps short codes URL-safe and compact.
-- PostgreSQL sequence blocks reduce ID-generation round trips.
-- Redis read-through caching optimizes hot redirects.
-- Redis sorted sets and Lua make rate limiting atomic.
-- JWT keeps API authentication stateless.
-- The click analytics pipeline is intentionally decoupled from redirect response latency.
 
 ## Tech Stack
 
-| Area | Technology |
-|---|---|
-| Language | Java 17 |
-| Framework | Spring Boot 3 |
-| Database | PostgreSQL |
-| Cache | Redis |
-| Migrations | Flyway |
-| Auth | JWT, Spring Security, BCrypt |
-| Testing | JUnit 5, Mockito, Spring Boot Test, Testcontainers |
-| Observability | Actuator, Micrometer, Prometheus |
-| API Docs | springdoc OpenAPI |
-| Load Testing | k6 |
-| Deployment | Docker, Docker Compose, Render |
+| Layer | Technology | Why |
+|-------|------------|-----|
+| Language | Java 17 | LTS target with a strong backend ecosystem |
+| Framework | Spring Boot 3.x | Production-ready web, security, data, and observability support |
+| Database | PostgreSQL 16 | ACID transactions, constraints, sequences, and SQL analytics |
+| Cache | Redis 7 | Low-latency reads and atomic Lua scripts |
+| ID Generation | PostgreSQL sequence + Base62 | Compact codes and 1,000x fewer sequence calls |
+| Auth | JJWT 0.12.x + BCrypt | Stateless signed tokens and adaptive password hashing |
+| Migrations | Flyway | Version-controlled, reproducible schema |
+| Testing | JUnit 5 + Mockito + Testcontainers | Focused unit tests and real-service integration coverage |
+| Observability | Micrometer + Prometheus | Standard counters and HTTP latency histograms |
+| Deployment | Render + Docker | Containerized, GitHub-native deployment |
 
-## Local Setup
+## API Endpoints
 
-Prerequisites:
-
-- Java 17
-- Maven 3.x
-- Docker Desktop
-- PostgreSQL and Redis via Docker Compose
-
-Start dependencies:
-
-```bash
-docker compose up -d postgres redis
-```
-
-Run the app:
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/v1/auth/signup` | None | Create account |
+| POST | `/api/v1/auth/login` | None | Get JWT token |
+| GET | `/api/v1/auth/me` | Bearer | Current user |
+| POST | `/api/v1/urls` | Optional | Shorten URL |
+| GET | `/{shortCode}` | None | Redirect |
+| DELETE | `/api/v1/urls/{shortCode}` | Bearer | Delete owned URL |
+| GET | `/api/v1/users/me/urls` | Bearer | Paginated URL list |
+| GET | `/api/v1/urls/{shortCode}/analytics` | Bearer | Click analytics |
+| GET | `/actuator/health` | None | Health check |
+| GET | `/actuator/prometheus` | Bearer | Metrics |
+| GET | `/swagger-ui.html` | None | API docs |
 
 ```bash
-mvn spring-boot:run
+# Signup
+curl -X POST http://localhost:8080/api/v1/auth/signup -H "Content-Type: application/json" -d '{"email":"user@example.com","password":"Password1"}'
+
+# Login
+curl -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"user@example.com","password":"Password1"}'
+
+# Shorten
+curl -X POST http://localhost:8080/api/v1/urls -H "Content-Type: application/json" -d '{"longUrl":"https://example.com"}'
+
+# Redirect without following the destination
+curl -i http://localhost:8080/{shortCode}
 ```
 
-Health check:
+Full request and response examples: [docs/api.md](docs/api.md)
+
+## Performance
+
+| Scenario | RPS | p50 | p95 | p99 | Error Rate |
+|----------|-----|-----|-----|-----|------------|
+| Anonymous URL shortening | 19.98 | 8.16 ms | 11.46 ms | 12.84 ms | 0.00% |
+| Redirect (warm Redis cache) | 100.26 | 2.65 ms | 3.54 ms | 4.13 ms | 0.00% |
+| Authenticated URL shortening | 10.00 | 9.37 ms | 11.35 ms | 12.39 ms | 0.00% |
+| Rate limiter correctness | N/A | N/A | N/A | N/A | 100.00% checks passed |
+
+These are validated fixed arrival rates, not maximum throughput claims. Full
+methodology and bottleneck analysis: [docs/performance.md](docs/performance.md)
+
+## Running Locally
 
 ```bash
-curl http://localhost:8080/actuator/health
-```
-
-Swagger UI:
-
-```text
-http://localhost:8080/swagger-ui.html
-```
-
-## Docker Setup
-
-Start local services:
-
-```bash
+git clone https://github.com/mvkrishna24/url-shortener.git
+cd url-shortener
 docker compose up -d
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+curl -X POST http://localhost:8080/api/v1/urls -H "Content-Type: application/json" -d '{"longUrl":"https://example.com"}'
 ```
-
-Stop services:
-
-```bash
-docker compose down
-```
-
-Reset local PostgreSQL and Redis volumes:
-
-```bash
-docker compose down -v
-docker compose up -d postgres redis
-```
-
-## Environment Variables
-
-Use [.env.example](.env.example) as the safe local template.
-
-Common app configuration:
-
-| Variable | Purpose | Local default |
-|---|---|---|
-| `SPRING_PROFILES_ACTIVE` | Spring profile | `dev` |
-| `SERVER_PORT` | HTTP port | `8080` |
-| `APP_BASE_URL` | Base URL returned in short URL responses | `http://localhost:8080` |
-| `DB_HOST` | PostgreSQL host | `localhost` |
-| `DB_PORT` | PostgreSQL port | `5432` |
-| `DB_NAME` | PostgreSQL database | `urlshortener` |
-| `DB_USER` | PostgreSQL user | `postgres` |
-| `DB_PASSWORD` | PostgreSQL password | `postgres` |
-| `REDIS_HOST` | Redis host | `localhost` |
-| `REDIS_PORT` | Redis port | `6379` |
-| `REDIS_PASSWORD` | Redis password | empty |
-| `REDIS_URL` | Production Redis connection URL | profile-specific |
-| `JWT_SECRET` | JWT signing secret | dev-only fallback |
-| `JWT_EXPIRATION` | JWT expiration in hours | `1` |
-| `CORS_ALLOWED_ORIGINS` | Allowed browser origins | `http://localhost:3000` |
-
-Production uses `REDIS_URL` in `application-prod.yml` for managed Redis providers such as Upstash.
-
-GeoIP country enrichment is optional. If `GeoLite2-Country.mmdb` is not present, click events are still stored, but country resolution is disabled.
-
-## API Overview
-
-Base API URL:
-
-```text
-http://localhost:8080/api/v1
-```
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/auth/signup` | Public | Create a user |
-| `POST` | `/auth/login` | Public | Return JWT |
-| `GET` | `/auth/me` | JWT | Current user |
-| `POST` | `/urls` | Optional JWT | Create short URL |
-| `GET` | `/users/me/urls` | JWT | List current user's URLs |
-| `GET` | `/urls/{shortCode}/analytics?days=7` | JWT owner only | URL analytics |
-| `GET` | `/{shortCode}` | Public | Redirect to long URL |
-
-See [docs/api.md](docs/api.md) for request and response examples.
 
 ## Testing
-
-Compile:
-
-```bash
-mvn clean compile
-```
-
-Run tests:
 
 ```bash
 mvn test
 ```
 
-Integration tests use Testcontainers and may be skipped locally when Docker or the Docker socket is unavailable. CI environments with Docker available should run them normally.
+The suite contains 39 passing unit tests. Twenty-nine Testcontainers integration
+tests are currently skipped on Docker Desktop 29.5.2 because docker-java 3.4.0
+uses an API version below Docker Desktop's enforced minimum; they run unchanged
+in compatible CI/Linux Docker environments.
 
-## Load Testing
+## Documentation
 
-k6 scripts live in [load-tests/](load-tests/).
+- [Architecture](docs/architecture.md)
+- [API reference](docs/api.md)
+- [Performance benchmarks](docs/performance.md)
+- [Operations](docs/operations.md)
+- [Security](docs/security.md)
+- [Rate limiting](docs/rate-limiting.md)
+- [Analytics pipeline](docs/analytics-pipeline.md)
+- [Interview notes](docs/interview-notes.md)
+- [Interview Q&A](docs/interview-prep.md)
+- [Resume bullets](docs/resume-bullets.md)
 
-Performance validation workflow:
+## Trade-offs And Next Steps
 
-- [docs/performance.md](docs/performance.md)
+- The in-memory analytics queue prioritizes redirect availability over click-event durability; Kafka is the planned durable replacement.
+- Redis rate limiting fails open during outages, preserving availability while temporarily reducing abuse protection.
+- Batch ID allocation can leave gaps after a process crash, but uniqueness is preserved.
+- The next performance phase is a ramping-arrival-rate saturation test with production logging levels and a Java 17 runtime.
 
-The repository defines performance targets and commands, but benchmark numbers should only be added after actually running tests on a known machine and configuration.
+## License
 
-## Deployment
-
-Deployment documentation:
-
-- [DEPLOYMENT.md](DEPLOYMENT.md)
-
-Render blueprint:
-
-- [render.yaml](render.yaml)
-
-## Project Structure
-
-```text
-src/main/java/com/vamshi/urlshortener
-  analytics/      async click analytics and analytics API
-  auth/           signup, login, auth DTOs
-  config/         Spring infrastructure config
-  controller/     URL creation and redirect controllers
-  dto/            public URL DTOs
-  entity/         JPA entities
-  exception/      API exception handling
-  ratelimit/      Redis sliding-window rate limiter
-  repository/     Spring Data repositories
-  security/       JWT filter, JWT service, security config
-  service/        URL, ID generation, cache services
-  user/           user-facing endpoints and DTOs
-
-src/main/resources
-  db/migration/   Flyway SQL migrations
-  scripts/        Redis Lua scripts
-
-docs/             architecture, API, operations, performance notes
-load-tests/       k6 load-test scenarios
-```
-
-## Current Limitations
-
-- No refresh-token flow yet; users log in again after JWT expiry.
-- In-memory analytics queue can lose buffered click events if the process exits.
-- GeoIP country enrichment requires a local MaxMind database file.
-- Redirect endpoint is intentionally not rate-limited.
-- Load-test scripts are provided, but this README does not claim measured benchmark results.
-- Render free-tier deployments can cold start after inactivity.
-
-## Future Improvements
-
-- Move analytics events to Kafka, RabbitMQ, or another durable queue.
-- Add refresh tokens and token revocation.
-- Add account deletion and URL deletion workflows.
-- Add spam and malware checks for destination URLs.
-- Add richer dashboard aggregation and pagination.
-- Add production dashboards and alerting around Redis, PostgreSQL, queue depth, and HTTP latency.
+[MIT](LICENSE)

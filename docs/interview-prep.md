@@ -12,13 +12,13 @@ A billion URLs fundamentally changes the storage and memory requirements. I woul
 The system is designed to "fail open." My `UrlCacheService` wraps Redis calls in a try-catch block. If Redis throws a connection exception, the service returns `Optional.empty()` and the application gracefully falls back to querying PostgreSQL directly. Similarly, the rate limiter intercepts the exception, allows the request through, and logs a critical alert. The application will experience a latency spike and increased DB load, but the core business function—redirecting users—remains online.
 
 **4. "Why batch counters instead of UUIDs?"**
-UUIDs are 128-bit numbers, which result in 22-character Base62 strings. That completely defeats the purpose of a URL *shortener*. By using a numeric sequence encoded to Base62, the first ~14 million URLs are only 4 characters long, and the next ~900 million are 5 characters. Batching those counters (fetching 10,000 at a time from Postgres) gives me the extreme speed of UUID generation without the length penalty.
+UUIDs produce much longer user-facing codes than a numeric sequence encoded to Base62. Fetching 1,000 IDs at a time from PostgreSQL removes most sequence round trips without introducing Snowflake-style clock or node-ID coordination.
 
 **5. "How would you migrate from in-memory queue to Kafka?"**
 Currently, my async analytics pipeline uses a `LinkedBlockingQueue`. To move to Kafka, I would replace the `queue.offer()` call in the redirect path with a non-blocking `KafkaTemplate.send()` to a `click_events` topic. I'd then extract the scheduled consumer into a completely separate microservice (a Spring Kafka `@KafkaListener`). This decouples the scaling—allowing me to scale the redirect service independently from the CPU-heavy analytics enrichment service, while guaranteeing we never lose click data if the web app crashes.
 
 **6. "What's the failure mode when an app instance crashes mid-block of IDs?"**
-If an instance allocates the block `10,000 to 19,999` into memory, uses 500 of them, and then the server crashes, those remaining 9,500 IDs are lost forever. For this domain, that is a perfectly acceptable trade-off. URL IDs do not need to be strictly contiguous; they just need to be unique. Trading a few lost numbers for a massive increase in write throughput is a net win.
+If an instance allocates a block of 1,000 IDs, uses 500, and then crashes, the remaining 500 IDs are skipped. For this domain, that is acceptable because URL IDs need to be unique, not contiguous.
 
 **7. "How do you handle short code collisions?"**
 Because I use a strictly increasing sequence counter centrally managed by the database and allocated in blocks, mathematical collisions are impossible by design. However, for *custom* aliases (e.g., users requesting `/my-promo`), I enforce a `UNIQUE` constraint on the `short_code` column in PostgreSQL. If a collision happens, the DB throws a `DataIntegrityViolationException`, which my global exception handler catches and translates into a 409 Conflict response.
@@ -30,7 +30,7 @@ I chose a sliding window log over a fixed window because fixed windows suffer fr
 I rely on the database for concurrency control here. PostgreSQL enforces a unique constraint on the alias column. Even if two requests bypass the application-level checks at the exact same millisecond, the database uses row-level locking during the insert. The first transaction commits successfully, and the second transaction fails with a constraint violation. I catch that exception in Spring and return a clean 400 or 409 to the user.
 
 **10. "Why did you choose read-through over write-through caching?"**
-Write-through pre-warms the cache by writing to Redis during URL creation. However, the vast majority of shortened URLs are used once or never at all. Pre-warming wastes expensive Redis memory on "cold" data. Read-through only caches URLs on their first click. It inherently prioritizes hot URLs, letting me keep my Redis memory footprint small while still achieving an 89% hit rate for actual traffic.
+Write-through pre-warms Redis during URL creation. Read-through only caches URLs on their first click, keeping Redis focused on requested links. The one-code warm-cache benchmark recorded 6,019 hits and one miss; I would use a broader production traffic sample before generalizing that hit rate.
 
 ---
 
@@ -43,7 +43,7 @@ Write-through pre-warms the cache by writing to Redis during URL creation. Howev
 My `JwtAuthenticationFilter` extends `OncePerRequestFilter`. It intercepts the request, extracts the `Authorization: Bearer` header, and parses it using the JJWT library. If the signature is valid and it hasn't expired, I extract the subject (username). I then instantiate a `UsernamePasswordAuthenticationToken`, attach it to the `SecurityContextHolder`, and call `filterChain.doFilter()`. If parsing fails, I clear the context and let the request proceed—subsequent `@PreAuthorize` annotations will block it if the route is protected.
 
 **3. "Why AtomicLong over synchronized in IdGeneratorService?"**
-Using the `synchronized` keyword blocks threads at the OS level, which causes massive context-switching overhead under high concurrency. I use `AtomicLong` because it relies on hardware-level Compare-And-Swap (CAS) instructions. When threads try to grab the next ID, they do so lock-free. In my JMH benchmarks, `AtomicLong.getAndIncrement()` drastically outperformed synchronized blocks when testing at 1,000+ RPS.
+The `AtomicLong` CAS fast path lets threads claim IDs without taking the block-refresh lock. A synchronized section is still used when the current 1,000-ID block is exhausted, but that happens once per block rather than once per URL.
 
 **4. "How do you handle cache invalidation on URL deletion?"**
 Cache invalidation is notoriously hard, but in this case, it's deterministic. In the `deleteUrl` method, I wrap the PostgreSQL deletion and the Redis eviction in a Spring `@Transactional` block. I issue a `DELETE` to Postgres, and then immediately call `redisTemplate.delete("url:" + shortCode)`. Because my cache TTL is relatively short (1 hour), even if the Redis delete fails due to a network blip, the stale cache naturally evicts itself quickly.
@@ -52,7 +52,7 @@ Cache invalidation is notoriously hard, but in this case, it's deterministic. In
 Instead of pulling thousands of raw clicks into Java and grouping them, I push the compute to PostgreSQL. The query looks like: `SELECT country_code, COUNT(*) FROM clicks WHERE url_id = ? GROUP BY country_code ORDER BY count DESC LIMIT 10`. I use Spring Data JPA's `@Query` projection to map this directly into a DTO. This avoids the N+1 problem and keeps the API latency extremely low for the dashboard.
 
 **6. "How are you doing batch inserts? Why not JPA saveAll?"**
-Hibernate's `saveAll()` generates a distinct `INSERT` statement for every entity, which creates massive network chatter. For high-volume click tracking, I bypassed JPA completely and injected a `JdbcTemplate`. I use `jdbcTemplate.batchUpdate(sql, batchArgs)`, which utilizes PostgreSQL's native JDBC batching to pack hundreds of inserts into a single network packet. In my testing, this increased write throughput by nearly 50x compared to Hibernate.
+For click tracking, I use `JdbcTemplate.batchUpdate()` with batches of up to 500 rows. This keeps ingestion explicit and avoids hydrating click entities; I have not benchmarked a JDBC-versus-JPA speedup yet.
 
 **7. "What happens if the geo-IP lookup fails?"**
 The MaxMind GeoIP database is local and fast, but IP addresses are messy. If an IP doesn't map to a country (like a localhost IP or a new subnet), the `GeoLocationService` catches the `AddressNotFoundException` and gracefully returns a default "Unknown" value. I don't let a non-critical analytics enrichment failure throw an exception that would drop the click record entirely.
@@ -71,7 +71,7 @@ If cold-start times were critical—like in AWS Lambda—I would have chosen Qua
 I considered DynamoDB for its absolute scalability. However, PostgreSQL was the pragmatic choice for a few reasons. First, I needed atomic counter generation, which Postgres handles perfectly with Sequences. Second, the analytics dashboard requires complex `GROUP BY` and `date_trunc` aggregations. Doing that over a relational database is trivial, whereas MongoDB or DynamoDB would require maintaining separate aggregate counters or deploying complex map-reduce pipelines.
 
 **3. "Why didn't you use Kafka from day 1?"**
-Engineering is about avoiding premature optimization. Kafka is amazing, but it requires provisioning a ZooKeeper/Kraft cluster, managing partition keys, and handling consumer group offsets. For v1 of this architecture targeting 800 RPS, a bounded in-memory `LinkedBlockingQueue` provided the required async decoupling without the massive operational overhead. Moving to Kafka is an easy refactor because the abstraction is already strictly defined.
+Kafka adds broker provisioning, partitioning, retention, and consumer-offset operations. For v1, a bounded in-memory `LinkedBlockingQueue` provided async decoupling with much lower operational overhead. Kafka is the next step when click-event durability and replay become requirements.
 
 **4. "What would you do differently if you started over?"**
 I would implement "Link Previews" directly into the shortening flow. Right now, when a URL is created, we don't know what it points to. If I started over, I'd trigger an async worker on creation to fetch the target URL's `<title>` and OpenGraph tags, storing them in the DB. This makes the user dashboard much richer and acts as an early spam-detection mechanism.

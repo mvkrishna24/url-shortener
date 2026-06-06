@@ -1,0 +1,14 @@
+http_server_requests_seconds_count{error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="/actuator/prometheus"} 2
+http_server_requests_seconds_count{error="none",exception="none",method="GET",outcome="REDIRECTION",status="302",uri="/{shortCode}"} 6020
+http_server_requests_seconds_count{error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/actuator/health"} 1
+http_server_requests_seconds_count{error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/actuator/prometheus"} 1
+http_server_requests_seconds_count{error="none",exception="none",method="POST",outcome="CLIENT_ERROR",status="429",uri="/api/v1/urls"} 40
+http_server_requests_seconds_count{error="none",exception="none",method="POST",outcome="SUCCESS",status="200",uri="/api/v1/auth/login"} 1
+http_server_requests_seconds_count{error="none",exception="none",method="POST",outcome="SUCCESS",status="201",uri="/api/v1/auth/signup"} 1
+http_server_requests_seconds_count{error="none",exception="none",method="POST",outcome="SUCCESS",status="201",uri="/api/v1/urls"} 1922
+# HELP urlshortener_cache_hits_total Redis cache hits for short-code lookups
+# TYPE urlshortener_cache_hits_total counter
+urlshortener_cache_hits_total 6019.0
+# HELP urlshortener_cache_misses_total Redis cache misses for short-code lookups
+# TYPE urlshortener_cache_misses_total counter
+urlshortener_cache_misses_total 1.0

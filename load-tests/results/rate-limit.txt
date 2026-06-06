@@ -1,0 +1,68 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: load-tests/rate-limit.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 1 max VUs, 1m0s max duration (incl. graceful stop):
+              * anonymous_abuse: 140 iterations for each of 1 VUs (maxDuration: 30s, gracefulStop: 30s)
+
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=100.00%
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+    requests_rejected_429
+    ✓ 'count>0' count=40
+
+    unexpected_status
+    ✓ 'count==0' count=0
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 500     1486.555591/s
+    checks_succeeded...: 100.00% 500 out of 500
+    checks_failed......: 0.00%   0 out of 500
+
+    ✓ status is 201 or 429
+    ✓ rate-limit limit header present
+    ✓ rate-limit remaining header present
+    ✓ 429 body has status
+    ✓ 429 body has message
+
+    CUSTOM
+    requests_rejected_429..........: 40     118.924447/s
+    unexpected_status..............: 0      0/s
+    urls_created...................: 100    297.311118/s
+
+    HTTP
+    http_req_duration..............: avg=2.25ms min=723µs   med=2.35ms max=8.04ms  p(90)=3.31ms p(95)=3.64ms
+      { expected_response:true }...: avg=2.25ms min=723µs   med=2.35ms max=8.04ms  p(90)=3.31ms p(95)=3.64ms
+    http_req_failed................: 0.00%  0 out of 140
+    http_reqs......................: 140    416.235566/s
+
+    EXECUTION
+    iteration_duration.............: avg=2.39ms min=773.7µs med=2.4ms  max=17.23ms p(90)=3.37ms p(95)=3.73ms
+    iterations.....................: 140    416.235566/s
+
+    NETWORK
+    data_received..................: 100 kB 298 kB/s
+    data_sent......................: 39 kB  117 kB/s
+
+
+
+
+running (0m00.3s), 0/1 VUs, 140 complete and 0 interrupted iterations
+anonymous_abuse ✓ [ 100% ] 1 VUs  00.3s/30s  140/140 iters, 140 per VU

@@ -180,7 +180,7 @@ Analytics scaling:
 
 - Replace the in-memory click queue with a durable broker.
 - Add refresh tokens and token revocation.
-- Add URL deletion and explicit cache invalidation endpoints.
+- Add bulk URL management and soft-delete recovery workflows.
 - Add destination safety checks.
 - Add dashboard-focused aggregate tables or materialized views.
 - Add production alerting for queue depth, Redis failures, DB pool saturation,
