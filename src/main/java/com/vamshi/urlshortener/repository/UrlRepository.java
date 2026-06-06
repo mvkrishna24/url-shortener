@@ -4,7 +4,12 @@ import com.vamshi.urlshortener.entity.Url;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Repository
@@ -12,4 +17,8 @@ public interface UrlRepository extends JpaRepository<Url, Long> {
     Optional<Url> findByShortCode(String shortCode);
     boolean existsByShortCode(String shortCode);
     Page<Url> findByUser_Id(Long userId, Pageable pageable);
+
+    @Modifying
+    @Query("DELETE FROM Url u WHERE u.expiresAt IS NOT NULL AND u.expiresAt < :now")
+    int deleteExpiredUrls(@Param("now") OffsetDateTime now);
 }
