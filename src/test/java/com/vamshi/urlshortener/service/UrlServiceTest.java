@@ -8,6 +8,7 @@ import com.vamshi.urlshortener.exception.Exceptions.CustomAliasConflictException
 import com.vamshi.urlshortener.exception.Exceptions.InvalidUrlException;
 import com.vamshi.urlshortener.exception.Exceptions.ShortCodeExpiredException;
 import com.vamshi.urlshortener.exception.Exceptions.ShortCodeNotFoundException;
+import com.vamshi.urlshortener.exception.Exceptions.UrlOwnershipException;
 import com.vamshi.urlshortener.service.ResolvedUrl;
 import com.vamshi.urlshortener.repository.UrlRepository;
 import com.vamshi.urlshortener.repository.UserRepository;
@@ -194,5 +195,51 @@ class UrlServiceTest {
         when(urlRepository.findByShortCode("ok")).thenReturn(Optional.of(url));
 
         assertThat(urlService.resolveShortCode("ok").longUrl()).isEqualTo("https://example.com");
+    }
+
+    // --- deleteUrl ---
+
+    @Test
+    void deleteUrl_owner_deletesAndInvalidatesCache() {
+        User owner = User.builder().id(7L).email("owner@example.com").build();
+        Url url = Url.builder().id(99L).shortCode("del01").longUrl("https://example.com").user(owner).build();
+        when(urlRepository.findByShortCode("del01")).thenReturn(Optional.of(url));
+
+        urlService.deleteUrl("del01", 7L);
+
+        verify(urlRepository).deleteById(99L);
+        verify(urlCacheService).invalidate("del01");
+    }
+
+    @Test
+    void deleteUrl_wrongOwner_throwsOwnershipException() {
+        User owner = User.builder().id(7L).email("owner@example.com").build();
+        Url url = Url.builder().id(99L).shortCode("del01").longUrl("https://example.com").user(owner).build();
+        when(urlRepository.findByShortCode("del01")).thenReturn(Optional.of(url));
+
+        assertThatThrownBy(() -> urlService.deleteUrl("del01", 99L))
+                .isInstanceOf(UrlOwnershipException.class);
+
+        verify(urlRepository, never()).deleteById(any());
+        verify(urlCacheService, never()).invalidate(any());
+    }
+
+    @Test
+    void deleteUrl_anonymousUrl_throwsOwnershipException() {
+        Url url = Url.builder().id(99L).shortCode("anon1").longUrl("https://example.com").user(null).build();
+        when(urlRepository.findByShortCode("anon1")).thenReturn(Optional.of(url));
+
+        assertThatThrownBy(() -> urlService.deleteUrl("anon1", 7L))
+                .isInstanceOf(UrlOwnershipException.class);
+
+        verify(urlRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteUrl_notFound_throwsShortCodeNotFoundException() {
+        when(urlRepository.findByShortCode("ghost")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> urlService.deleteUrl("ghost", 7L))
+                .isInstanceOf(ShortCodeNotFoundException.class);
     }
 }

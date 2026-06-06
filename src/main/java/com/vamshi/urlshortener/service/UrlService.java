@@ -115,6 +115,20 @@ public class UrlService {
         return resolved;
     }
 
+    @Transactional
+    public void deleteUrl(String shortCode, Long userId) {
+        Url url = urlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new ShortCodeNotFoundException("Short code not found: " + shortCode));
+
+        if (url.getUser() == null || !url.getUser().getId().equals(userId)) {
+            throw new UrlOwnershipException("You do not own this URL.");
+        }
+
+        urlRepository.deleteById(url.getId());
+        urlCacheService.invalidate(shortCode);
+        log.info("URL deleted: shortCode={} by userId={}", shortCode, userId);
+    }
+
     private UrlResponse toResponse(Url url) {
         OffsetDateTime createdAt = url.getCreatedAt() != null ? url.getCreatedAt() : OffsetDateTime.now();
         return new UrlResponse(

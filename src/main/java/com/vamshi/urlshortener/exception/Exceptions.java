@@ -24,4 +24,8 @@ public class Exceptions {
             super("Email already in use: " + email);
         }
     }
+
+    public static class UrlOwnershipException extends RuntimeException {
+        public UrlOwnershipException(String message) { super(message); }
+    }
 }
