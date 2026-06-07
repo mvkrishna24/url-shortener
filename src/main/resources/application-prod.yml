@@ -23,12 +23,9 @@ spring:
           max-idle: 4
           min-idle: 1
 
-  # HikariCP: Render free PostgreSQL allows 25 simultaneous connections total.
-  # Reserve headroom for migrations, health checks, and the connection reaper.
+  # The datasource URL and credentials inherit the proven DB_HOST/DB_PORT/DB_NAME
+  # and DB_USER/DB_PASSWORD configuration from application.yml.
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:urlshortener}}
-    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:postgres}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:postgres}}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -50,7 +47,7 @@ server:
 
 # App-level config
 app:
-  base-url: ${APP_BASE_URL}        # Set to https://<your-service-name>.onrender.com in Render
+  base-url: ${APP_BASE_URL:https://url-shortener-aimk.onrender.com}
 
 # Logging: JSON via logback-spring.xml (springProfile name="prod")
 logging:
