@@ -25,6 +25,9 @@
 
     <properties>
         <java.version>17</java.version>
+        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <!-- Versions not managed by Spring Boot parent -->
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
@@ -240,6 +243,27 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>enforce-java</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[17,18)</version>
+                                    <message>This project must be built with Java 17. Set JAVA_HOME to a Java 17 installation.</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <!--
                 Explicitly register Lombok as an annotation processor.
                 Service-loader discovery (the default) silently fails on JDK 23+ because

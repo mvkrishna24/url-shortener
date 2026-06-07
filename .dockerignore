@@ -20,6 +20,7 @@ docs/
 load-tests/
 scripts/
 *.md
+*.log
 
 # Test containers / CI config
 .github/
