@@ -123,6 +123,28 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 curl -X POST http://localhost:8080/api/v1/urls -H "Content-Type: application/json" -d '{"longUrl":"https://example.com"}'
 ```
 
+## Live Demo
+
+Live at: `[placeholder - fill in after Render deploy]`
+
+> Runs on Render free tier. The first request after an idle period may take
+> around 30 seconds to wake. API documentation:
+> `[your-render-url]/swagger-ui.html`
+
+## Deployment
+
+This project deploys automatically to Render on every push to `main` through
+GitHub Actions. See [DEPLOYMENT.md](DEPLOYMENT.md) for setup and manual
+deployment instructions.
+
+The CI/CD pipeline:
+
+1. Compiles and runs the test suite on Ubuntu with Java 17, PostgreSQL, and Redis.
+2. Builds a multi-stage Docker image.
+3. Starts the image and verifies the health endpoint.
+4. Triggers Render through a protected deploy hook.
+5. Polls the live deployment until its smoke test passes.
+
 ## Testing
 
 ```bash

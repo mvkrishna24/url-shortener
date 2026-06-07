@@ -16,7 +16,7 @@ spring:
   # Format: redis://[:password@]host:port  or  rediss://... for TLS (Upstash)
   data:
     redis:
-      url: ${REDIS_URL}
+      url: ${REDIS_URL:redis://${SPRING_REDIS_HOST:localhost}:${SPRING_REDIS_PORT:6379}}
       lettuce:
         pool:
           max-active: 8             # Upstash free tier: 100 max concurrent connections
@@ -26,6 +26,9 @@ spring:
   # HikariCP: Render free PostgreSQL allows 25 simultaneous connections total.
   # Reserve headroom for migrations, health checks, and the connection reaper.
   datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:urlshortener}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:postgres}}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -34,6 +37,7 @@ spring:
     type: redis
 
   flyway:
+    enabled: true
     clean-disabled: true            # NEVER clean in production
 
 # Render sets PORT; this overrides server.port from application.yml.
@@ -61,7 +65,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus   # Keep prometheus for optional Grafana Cloud
+        include: health,prometheus   # Keep prometheus for optional Grafana Cloud
 
 # Keep Swagger UI enabled — it's a portfolio feature and part of the live demo.
 springdoc:

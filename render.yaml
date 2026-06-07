@@ -68,6 +68,8 @@ services:
       # JWT expiration is measured in hours by app.jwt.expiry-hours.
       - key: JWT_EXPIRATION
         value: "1"
+      - key: SERVER_PORT
+        value: "8080"
 
 databases:
   - name: url-shortener-db
